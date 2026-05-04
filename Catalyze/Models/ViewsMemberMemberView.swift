@@ -85,6 +85,7 @@ private struct MemberDetailContent: View {
                     
                     // 3. Tech Stack → distribution bars (for now, just list)
                     TechnicalStackSection(member: member)
+                    TechStackDistribution(member: member)
                     
                     // Other sections
                     ObservationSection(member: member)
@@ -344,37 +345,13 @@ private struct SectionCard<Content: View>: View {
 
     alice.stack = [stackSwift, stackTS]
 
-    // Behavioral strength
-    let behavioralStrength = StrengthWeakness(
-        kind: .strength,
-        category: "Communication",
-        intensity: .strong
-    )
-    behavioralStrength.member = alice
-    
-    // Technical skills for the radar
-    let techStrength1 = StrengthWeakness(
+    let strength = StrengthWeakness(
         kind: .strength,
         category: "Code Quality",
         intensity: .strong
     )
-    techStrength1.member = alice
-    
-    let techStrength2 = StrengthWeakness(
-        kind: .strength,
-        category: "Testing",
-        intensity: .solid
-    )
-    techStrength2.member = alice
-    
-    let techWeakness = StrengthWeakness(
-        kind: .weakness,
-        category: "DevOps",
-        intensity: .developing
-    )
-    techWeakness.member = alice
-    
-    alice.tags = [behavioralStrength, techStrength1, techStrength2, techWeakness]
+    strength.member = alice
+    alice.tags = [strength]
 
     context.insert(mentor)
     context.insert(alice)

@@ -12,7 +12,13 @@ struct MarkdownText: View {
     let markdown: String
     
     var body: some View {
-        if let attributedString = try? AttributedString(markdown: markdown, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+        if let attributedString = try? AttributedString(
+            markdown: markdown,
+            options: AttributedString.MarkdownParsingOptions(
+                interpretedSyntax: .full,
+                failurePolicy: .returnPartiallyParsedIfPossible
+            )
+        ) {
             Text(attributedString)
                 .textSelection(.enabled)
         } else {
