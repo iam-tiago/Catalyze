@@ -27,10 +27,22 @@ struct CatalyzeApp: App {
     init() {
         do {
             self.container = try PersistenceController.makeContainer()
-            print("✓ ModelContainer initialized successfully")
+            print("✅ ModelContainer initialized successfully")
+            
+            // Verify persistence is working
+            #if DEBUG
+            let context = ModelContext(container)
+            let descriptor = FetchDescriptor<TeamMember>()
+            if let members = try? context.fetch(descriptor) {
+                print("📊 Found \(members.count) existing members in database")
+                for member in members.prefix(3) {
+                    print("   - \(member.name) (\(member.role))")
+                }
+            }
+            #endif
         } catch {
             // Last-resort fallback. Logged for diagnostics.
-            print("✗ Failed to open persistent store: \(error)")
+            print("❌ Failed to open persistent store: \(error)")
             print("⚠️  Falling back to in-memory container. Data will NOT persist!")
             // swiftlint:disable:next force_try
             self.container = try! PersistenceController.makePreviewContainer()

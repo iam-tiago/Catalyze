@@ -65,12 +65,12 @@ enum PersistenceController {
     static func makeContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
         
-        // For debugging: temporarily disable CloudKit if having sync issues
-        // Change .automatic to .none to disable CloudKit sync
+        // TEMPORARY FIX: Use .none to disable CloudKit if having persistence issues
+        // Change back to .automatic once CloudKit is properly configured
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic   // uses container ID from entitlements
+            cloudKitDatabase: .none   // Disabled CloudKit for now - change to .automatic when ready
         )
         
         let container = try ModelContainer(
@@ -83,7 +83,7 @@ enum PersistenceController {
         #if DEBUG
         print("📦 SwiftData container created")
         print("   Store URL: \(config.url)")
-        print("   CloudKit: \(config.cloudKitDatabase)")
+        print("   CloudKit: \(config.cloudKitDatabase == .none ? "DISABLED" : "ENABLED")")
         #endif
         
         return container

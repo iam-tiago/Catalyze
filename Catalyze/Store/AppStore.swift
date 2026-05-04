@@ -90,23 +90,29 @@ final class AppStore {
     // model carries over.
 
     func addMember(_ member: TeamMember, in context: ModelContext) {
+        print("🔵 Attempting to add member: \(member.name)")
         context.insert(member)
         do {
             try context.save()
-            print("✓ Member saved: \(member.name)")
+            print("✅ Member saved successfully: \(member.name) (ID: \(member.id))")
+            print("   - Role: \(member.role)")
+            print("   - Seniority: \(member.seniority.label)")
         } catch {
-            print("✗ Failed to save member: \(error)")
+            print("❌ Failed to save member: \(error)")
+            print("   Error details: \(error.localizedDescription)")
             // In production, you might want to show an alert to the user
         }
     }
 
     func updateMember(_ member: TeamMember, in context: ModelContext) {
+        print("🔵 Updating member: \(member.name)")
         member.updatedAt = Date()
         do {
             try context.save()
-            print("✓ Member updated: \(member.name)")
+            print("✅ Member updated successfully: \(member.name)")
         } catch {
-            print("✗ Failed to update member: \(error)")
+            print("❌ Failed to update member: \(error)")
+            print("   Error details: \(error.localizedDescription)")
         }
     }
 
