@@ -50,6 +50,7 @@ struct SettingsView: View {
     @State private var showingImportSuccess = false
     @State private var showingImportError = false
     @State private var importErrorMessage = ""
+    @State private var showingExportSuccess = false
 
     var body: some View {
         Form {
@@ -232,6 +233,17 @@ struct SettingsView: View {
                 } label: {
                     Label("Export Data", systemImage: "square.and.arrow.up")
                 }
+                
+                if showingExportSuccess {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Data exported successfully")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    .transition(.opacity)
+                }
 
                 Button {
                     showingImportPicker = true
@@ -289,12 +301,26 @@ struct SettingsView: View {
         }
         .fileExporter(
             isPresented: $showingExportActivity,
-            document: exportFileURL.map { CatalyzeDocument(fileURL: $0) },
+            document: exportFileURL != nil ? CatalyzeDocument(fileURL: exportFileURL!) : nil,
             contentType: .json,
             defaultFilename: "Catalyze-Export-\(Date().formatted(date: .numeric, time: .omitted)).json"
         ) { result in
-            if case .success = result {
-                // Successfully exported
+            switch result {
+            case .success(let url):
+                print("Export successful: \(url)")
+                withAnimation {
+                    showingExportSuccess = true
+                }
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    withAnimation {
+                        showingExportSuccess = false
+                    }
+                }
+            case .failure(let error):
+                print("Export failed: \(error)")
+                importErrorMessage = "Failed to export: \(error.localizedDescription)"
+                showingImportError = true
             }
         }
         .fileImporter(
@@ -578,10 +604,12 @@ struct SettingsView: View {
     // MARK: - Export/Import --------------------------------------------------
     
     private func exportData() {
+        print("🔵 Export data initiated")
         do {
             // Fetch all team members
             let descriptor = FetchDescriptor<TeamMember>(sortBy: [SortDescriptor(\.name)])
             let members = try context.fetch(descriptor)
+            print("🔵 Fetched \(members.count) members")
             
             // Create exportable data structure
             let exportData = ExportData(
@@ -629,17 +657,20 @@ struct SettingsView: View {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(exportData)
+            print("🔵 JSON encoded: \(jsonData.count) bytes")
             
             // Write to temporary file
             let tempURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("catalyze-export.json")
             try jsonData.write(to: tempURL)
+            print("🔵 File written to: \(tempURL.path)")
             
             exportFileURL = tempURL
+            print("🔵 Setting showingExportActivity = true")
             showingExportActivity = true
             
         } catch {
-            print("Export failed: \(error)")
+            print("🔴 Export failed: \(error)")
             importErrorMessage = "Failed to export data: \(error.localizedDescription)"
             showingImportError = true
         }
