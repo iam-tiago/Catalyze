@@ -20,7 +20,7 @@ struct TechnicalRadar: View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
             VStack(alignment: .leading, spacing: 4) {
-                Text("Technical Skills")
+                Text("Tech Skills")
                     .font(.headline)
                 
                 Text("Based on technical strengths and growth areas")
@@ -41,11 +41,11 @@ struct TechnicalRadar: View {
                         .font(.largeTitle)
                         .foregroundStyle(.tertiary)
                     
-                    Text("No technical skills data")
+                    Text("No tech skills data")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
-                    Text("Add technical strengths and growth areas")
+                    Text("Add tech strengths and growth areas")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }

@@ -75,16 +75,18 @@ private struct MemberDetailContent: View {
 
                 // Sections
                 VStack(spacing: 16) {
+                    // 1. Strengths & Growth Areas → Behavioral Profile radar
                     TagSection(member: member)
-                    
-                    // Behavioral radar chart (right after strengths/weaknesses)
                     MemberRadar(member: member)
                     
-                    TechnicalStackSection(member: member)
-                    
-                    // Technical radar chart (right after technical stack)
+                    // 2. Tech Skills → Tech Skills radar
+                    TechSkillsSection(member: member)
                     TechnicalRadar(member: member)
                     
+                    // 3. Tech Stack → distribution bars (for now, just list)
+                    TechnicalStackSection(member: member)
+                    
+                    // Other sections
                     ObservationSection(member: member)
                     IDPSection(member: member)
                     PromotionReadinessSection(member: member)
@@ -342,13 +344,37 @@ private struct SectionCard<Content: View>: View {
 
     alice.stack = [stackSwift, stackTS]
 
-    let strength = StrengthWeakness(
+    // Behavioral strength
+    let behavioralStrength = StrengthWeakness(
+        kind: .strength,
+        category: "Communication",
+        intensity: .strong
+    )
+    behavioralStrength.member = alice
+    
+    // Technical skills for the radar
+    let techStrength1 = StrengthWeakness(
         kind: .strength,
         category: "Code Quality",
         intensity: .strong
     )
-    strength.member = alice
-    alice.tags = [strength]
+    techStrength1.member = alice
+    
+    let techStrength2 = StrengthWeakness(
+        kind: .strength,
+        category: "Testing",
+        intensity: .solid
+    )
+    techStrength2.member = alice
+    
+    let techWeakness = StrengthWeakness(
+        kind: .weakness,
+        category: "DevOps",
+        intensity: .developing
+    )
+    techWeakness.member = alice
+    
+    alice.tags = [behavioralStrength, techStrength1, techStrength2, techWeakness]
 
     context.insert(mentor)
     context.insert(alice)

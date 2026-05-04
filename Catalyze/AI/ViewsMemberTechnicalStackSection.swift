@@ -28,7 +28,7 @@ struct TechnicalStackSection: View {
                     }
                 } label: {
                     HStack {
-                        Label("Technical Stack", systemImage: "chevron.left.forwardslash.chevron.right")
+                        Label("Tech Stack", systemImage: "chevron.left.forwardslash.chevron.right")
                             .font(.headline)
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
