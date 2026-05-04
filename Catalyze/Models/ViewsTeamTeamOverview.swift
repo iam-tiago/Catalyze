@@ -83,35 +83,77 @@ struct TeamOverview: View {
                         )
                     }
                     
-                    // Seniority distribution
+                    // Distribution charts (side by side)
                     if !members.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Seniority Distribution")
-                                .font(.subheadline.weight(.semibold))
-                            
-                            ForEach(seniorityBreakdown, id: \.seniority) { item in
-                                HStack {
-                                    Text(item.seniority.label)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(item.count)")
-                                        .font(.caption.weight(.medium))
-                                    
-                                    // Bar
-                                    GeometryReader { geo in
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(.tint)
-                                            .frame(width: geo.size.width * (Double(item.count) / Double(members.count)))
+                        HStack(alignment: .top, spacing: 16) {
+                            // Seniority distribution
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Seniority Distribution")
+                                    .font(.subheadline.weight(.semibold))
+                                
+                                ForEach(seniorityBreakdown, id: \.seniority) { item in
+                                    HStack {
+                                        Text(item.seniority.label)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Spacer()
+                                        
+                                        Text("\(item.count)")
+                                            .font(.caption.weight(.medium))
+                                        
+                                        // Bar
+                                        GeometryReader { geo in
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(.blue)
+                                                .frame(width: geo.size.width * (Double(item.count) / Double(members.count)))
+                                        }
+                                        .frame(width: 60, height: 6)
                                     }
-                                    .frame(width: 80, height: 6)
                                 }
                             }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
+                            
+                            // Stack distribution
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Stack Distribution")
+                                    .font(.subheadline.weight(.semibold))
+                                
+                                ForEach(stackBreakdown.prefix(8), id: \.tag) { item in
+                                    HStack {
+                                        Text(item.tag.rawValue)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Spacer()
+                                        
+                                        Text("\(item.count)")
+                                            .font(.caption.weight(.medium))
+                                        
+                                        // Bar
+                                        GeometryReader { geo in
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(.purple)
+                                                .frame(width: geo.size.width * (Double(item.count) / Double(totalStackEntries)))
+                                        }
+                                        .frame(width: 60, height: 6)
+                                    }
+                                }
+                                
+                                if stackBreakdown.isEmpty {
+                                    Text("No stack data")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding(.vertical, 8)
+                                }
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
                         }
-                        .padding()
-                        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
                     }
                     
                     // Team radar
@@ -143,6 +185,27 @@ struct TeamOverview: View {
         return Seniority.allCases.compactMap { seniority in
             guard let count = groups[seniority]?.count, count > 0 else { return nil }
             return (seniority, count)
+        }
+    }
+    
+    private var stackBreakdown: [(tag: StackTag, count: Int)] {
+        var tagCounts: [StackTag: Int] = [:]
+        
+        for member in members {
+            guard let stack = member.stack else { continue }
+            for entry in stack {
+                tagCounts[entry.tag, default: 0] += 1
+            }
+        }
+        
+        return tagCounts
+            .map { (tag: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
+    }
+    
+    private var totalStackEntries: Int {
+        members.reduce(0) { total, member in
+            total + (member.stack?.count ?? 0)
         }
     }
 }

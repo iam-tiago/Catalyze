@@ -16,26 +16,43 @@ struct TechnicalStackSection: View {
 
     @State private var showingAddStack = false
     @State private var stackToEdit: StackEntry? = nil
+    @State private var isExpanded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Section header
+            // Section header with collapse button
             HStack {
-                Label("Technical Stack", systemImage: "chevron.left.forwardslash.chevron.right")
-                    .font(.headline)
-                Spacer()
-                
                 Button {
-                    showingAddStack = true
+                    withAnimation(.smooth) {
+                        isExpanded.toggle()
+                    }
                 } label: {
-                    Label("Add Technology", systemImage: "plus.circle.fill")
-                        .labelStyle(.iconOnly)
-                        .foregroundStyle(.blue)
+                    HStack {
+                        Label("Technical Stack", systemImage: "chevron.left.forwardslash.chevron.right")
+                            .font(.headline)
+                        Spacer()
+                        Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
+                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                    }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                
+                if isExpanded {
+                    Button {
+                        showingAddStack = true
+                    } label: {
+                        Label("Add Technology", systemImage: "plus.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
-            Divider()
+            if isExpanded {
+                Divider()
 
             if (member.stack ?? []).isEmpty {
                 Text("No technologies added yet")
@@ -53,6 +70,7 @@ struct TechnicalStackSection: View {
                     }
                 }
             }
+            }  // End if isExpanded
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))

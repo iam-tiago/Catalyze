@@ -64,126 +64,45 @@ private struct IndividualInsightTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Input section - larger card
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Label("Generate Insight", systemImage: "brain.fill")
-                                .font(.title2.bold())
-                            Spacer()
-                        }
+        CatalystInsightLayout(
+            inputTitle: "Generate Insight",
+            streamingText: streamingText,
+            isGenerating: isGenerating,
+            errorMessage: errorMessage
+        ) {
+            if members.isEmpty {
+                CatalystEmptyState(
+                    icon: "person.3.slash",
+                    title: "No team members yet",
+                    message: "Add members in the Team tab to generate insights."
+                )
+            } else {
+                VStack(spacing: CatalystSpacing.lg) {
+                    // Member picker
+                    VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                        CatalystFieldLabel("Team Member")
                         
-                        Divider()
+                        Picker("Select Member", selection: $selectedMemberId) {
+                            Text("Choose a member...").tag(nil as String?)
 
-                        if members.isEmpty {
-                            VStack(spacing: 12) {
-                                Image(systemName: "person.3.slash")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.secondary)
-                                Text("No team members yet")
-                                    .font(.headline)
-                                Text("Add members in the Team tab to generate insights.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 32)
-                        } else {
-                            VStack(spacing: 16) {
-                                // Member picker
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Team Member")
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Picker("Select Member", selection: $selectedMemberId) {
-                                        Text("Choose a member...").tag(nil as String?)
-
-                                        ForEach(members) { member in
-                                            Text(member.name).tag(member.id as String?)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-
-                                // Generate button
-                                Button {
-                                    Task { await generate() }
-                                } label: {
-                                    if isGenerating {
-                                        HStack {
-                                            ProgressView()
-                                                .controlSize(.small)
-                                            Text("Generating Insight...")
-                                        }
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                    } else {
-                                        Label("Generate AI Insight", systemImage: "sparkles")
-                                            .frame(maxWidth: .infinity)
-                                            .padding()
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
-                                .disabled(selectedMemberId == nil || isGenerating)
+                            ForEach(members) { member in
+                                Text(member.name).tag(member.id as String?)
                             }
                         }
-
-                        if let error = errorMessage {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.red)
-                                Text(error)
-                                    .font(.callout)
-                                    .foregroundStyle(.red)
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(24)
-                    .frame(maxWidth: .infinity)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-                    // Output section
-                    if !streamingText.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Label("AI Response", systemImage: "sparkles")
-                                    .font(.title2.bold())
-
-                                Spacer()
-
-                                if isGenerating {
-                                    HStack(spacing: 8) {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                        Text("Streaming...")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-
-                            Divider()
-
-                            MarkdownText(markdown: streamingText)
-                                .font(.body)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(24)
-                        .frame(maxWidth: .infinity)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    // Generate button
+                    CatalystPrimaryButton(
+                        "Generate AI Insight",
+                        icon: "sparkles",
+                        isLoading: isGenerating,
+                        isEnabled: selectedMemberId != nil
+                    ) {
+                        Task { await generate() }
                     }
                 }
-                .padding(24)
-                .frame(minWidth: geometry.size.width)
             }
         }
     }
@@ -244,23 +163,38 @@ private struct SituationalAdviceTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Input section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Situational Advice")
-                        .font(.headline)
+        CatalystSimpleInsightLayout(
+            inputTitle: "Situational Advice",
+            inputIcon: "lightbulb.fill",
+            streamingText: streamingText,
+            isGenerating: isGenerating,
+            errorMessage: errorMessage
+        ) {
+            VStack(spacing: CatalystSpacing.lg) {
+                // Description
+                Text("Describe a situation and optionally link it to a team member.")
+                    .font(CatalystTypography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Describe a situation and optionally link it to a team member.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
+                // Situation text editor
+                VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                    CatalystFieldLabel("Situation")
+                    
                     TextEditor(text: $situation)
                         .frame(minHeight: 100)
-                        .padding(8)
-                        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(CatalystSpacing.sm)
+                        .background(
+                            .quaternary.opacity(CatalystOpacity.strong),
+                            in: RoundedRectangle(cornerRadius: CatalystRadius.sm)
+                        )
+                }
 
-                    Picker("Related Member (Optional)", selection: $selectedMemberId) {
+                // Related member picker
+                VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                    CatalystFieldLabel("Related Member (Optional)")
+                    
+                    Picker("Related Member", selection: $selectedMemberId) {
                         Text("None").tag(nil as String?)
 
                         ForEach(members) { member in
@@ -268,57 +202,19 @@ private struct SituationalAdviceTab: View {
                         }
                     }
                     .pickerStyle(.menu)
-
-                    Button {
-                        Task { await generate() }
-                    } label: {
-                        if isGenerating {
-                            HStack {
-                                ProgressView()
-                                    .controlSize(.small)
-                                Text("Generating...")
-                            }
-                        } else {
-                            Label("Get Advice", systemImage: "brain.fill")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(situation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGenerating)
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
 
-                // Output section
-                if !streamingText.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("AI Response", systemImage: "sparkles")
-                                .font(.headline)
-
-                            Spacer()
-
-                            if isGenerating {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-                        }
-
-                        Divider()
-
-                        MarkdownText(markdown: streamingText)
-                            .font(.body)
-                    }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                // Generate button
+                CatalystPrimaryButton(
+                    "Get Advice",
+                    icon: "brain.fill",
+                    isLoading: isGenerating,
+                    isEnabled: !situation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ) {
+                    Task { await generate() }
                 }
             }
-            .padding()
         }
     }
 
@@ -377,87 +273,55 @@ private struct TeamInsightTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Input section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Team Analysis")
-                        .font(.headline)
+        CatalystSimpleInsightLayout(
+            inputTitle: "Team Analysis",
+            inputIcon: "person.3.fill",
+            streamingText: streamingText,
+            isGenerating: isGenerating,
+            errorMessage: errorMessage
+        ) {
+            VStack(spacing: CatalystSpacing.lg) {
+                // Description
+                Text("Analyze patterns, strengths, and gaps across your entire team.")
+                    .font(CatalystTypography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Analyze patterns, strengths, and gaps across your entire team.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    if members.isEmpty {
-                        Text("No team members yet. Add members in the Team tab.")
-                            .foregroundStyle(.secondary)
-                            .padding()
-                    } else {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Team size: \(members.count)")
-                                    .font(.subheadline)
-                                Text("Will analyze all members")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-                        }
-                        .padding()
-                        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
-
-                        Button {
-                            Task { await generate() }
-                        } label: {
-                            if isGenerating {
-                                HStack {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                    Text("Analyzing...")
-                                }
-                            } else {
-                                Label("Analyze Team", systemImage: "brain.fill")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isGenerating)
-                    }
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                // Output section
-                if !streamingText.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("AI Response", systemImage: "sparkles")
-                                .font(.headline)
-
-                            Spacer()
-
-                            if isGenerating {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
+                if members.isEmpty {
+                    CatalystEmptyState(
+                        icon: "person.3.slash",
+                        title: "No team members yet",
+                        message: "Add members in the Team tab to generate team insights."
+                    )
+                } else {
+                    // Team info card
+                    HStack {
+                        VStack(alignment: .leading, spacing: CatalystSpacing.xs) {
+                            Text("Team size: \(members.count)")
+                                .font(CatalystTypography.subheadline)
+                            Text("Will analyze all members")
+                                .font(CatalystTypography.caption)
+                                .foregroundStyle(.secondary)
                         }
 
-                        Divider()
-
-                        MarkdownText(markdown: streamingText)
-                            .font(.body)
+                        Spacer()
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(CatalystSpacing.lg)
+                    .background(
+                        .quaternary.opacity(CatalystOpacity.strong),
+                        in: RoundedRectangle(cornerRadius: CatalystRadius.sm)
+                    )
+
+                    // Generate button
+                    CatalystPrimaryButton(
+                        "Analyze Team",
+                        icon: "brain.fill",
+                        isLoading: isGenerating
+                    ) {
+                        Task { await generate() }
+                    }
                 }
             }
-            .padding()
         }
     }
 
@@ -512,82 +376,55 @@ private struct OneOnOnePrepTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Input section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("1:1 Preparation")
-                        .font(.headline)
+        CatalystSimpleInsightLayout(
+            inputTitle: "1:1 Preparation",
+            inputIcon: "person.2.fill",
+            streamingText: streamingText,
+            isGenerating: isGenerating,
+            errorMessage: errorMessage
+        ) {
+            VStack(spacing: CatalystSpacing.lg) {
+                // Description
+                Text("Prepare talking points and agenda for an upcoming one-on-one.")
+                    .font(CatalystTypography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Prepare talking points and agenda for an upcoming one-on-one.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                if members.isEmpty {
+                    CatalystEmptyState(
+                        icon: "person.2.slash",
+                        title: "No team members yet",
+                        message: "Add members in the Team tab to prepare for 1:1 meetings."
+                    )
+                } else {
+                    VStack(spacing: CatalystSpacing.lg) {
+                        // Member picker
+                        VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                            CatalystFieldLabel("Team Member")
+                            
+                            Picker("Select Member", selection: $selectedMemberId) {
+                                Text("Choose a member...").tag(nil as String?)
 
-                    if members.isEmpty {
-                        Text("No team members yet. Add members in the Team tab.")
-                            .foregroundStyle(.secondary)
-                            .padding()
-                    } else {
-                        Picker("Select Member", selection: $selectedMemberId) {
-                            Text("Choose a member...").tag(nil as String?)
-
-                            ForEach(members) { member in
-                                Text(member.name).tag(member.id as String?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-
-                        Button {
-                            Task { await generate() }
-                        } label: {
-                            if isGenerating {
-                                HStack {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                    Text("Preparing...")
+                                ForEach(members) { member in
+                                    Text(member.name).tag(member.id as String?)
                                 }
-                            } else {
-                                Label("Prepare 1:1", systemImage: "brain.fill")
                             }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(selectedMemberId == nil || isGenerating)
-                    }
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                // Output section
-                if !streamingText.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("AI Response", systemImage: "sparkles")
-                                .font(.headline)
-
-                            Spacer()
-
-                            if isGenerating {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
-                        Divider()
-
-                        MarkdownText(markdown: streamingText)
-                            .font(.body)
+                        // Generate button
+                        CatalystPrimaryButton(
+                            "Prepare 1:1",
+                            icon: "brain.fill",
+                            isLoading: isGenerating,
+                            isEnabled: selectedMemberId != nil
+                        ) {
+                            Task { await generate() }
+                        }
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .padding()
         }
     }
 
@@ -646,82 +483,55 @@ private struct PerformanceReviewTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Input section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Performance Review")
-                        .font(.headline)
+        CatalystSimpleInsightLayout(
+            inputTitle: "Performance Review",
+            inputIcon: "doc.text.fill",
+            streamingText: streamingText,
+            isGenerating: isGenerating,
+            errorMessage: errorMessage
+        ) {
+            VStack(spacing: CatalystSpacing.lg) {
+                // Description
+                Text("Generate a performance review draft based on observations and development activity.")
+                    .font(CatalystTypography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Generate a performance review draft based on observations and development activity.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                if members.isEmpty {
+                    CatalystEmptyState(
+                        icon: "doc.text.slash",
+                        title: "No team members yet",
+                        message: "Add members in the Team tab to generate performance reviews."
+                    )
+                } else {
+                    VStack(spacing: CatalystSpacing.lg) {
+                        // Member picker
+                        VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                            CatalystFieldLabel("Team Member")
+                            
+                            Picker("Select Member", selection: $selectedMemberId) {
+                                Text("Choose a member...").tag(nil as String?)
 
-                    if members.isEmpty {
-                        Text("No team members yet. Add members in the Team tab.")
-                            .foregroundStyle(.secondary)
-                            .padding()
-                    } else {
-                        Picker("Select Member", selection: $selectedMemberId) {
-                            Text("Choose a member...").tag(nil as String?)
-
-                            ForEach(members) { member in
-                                Text(member.name).tag(member.id as String?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-
-                        Button {
-                            Task { await generate() }
-                        } label: {
-                            if isGenerating {
-                                HStack {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                    Text("Generating...")
+                                ForEach(members) { member in
+                                    Text(member.name).tag(member.id as String?)
                                 }
-                            } else {
-                                Label("Generate Review", systemImage: "brain.fill")
                             }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(selectedMemberId == nil || isGenerating)
-                    }
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                // Output section
-                if !streamingText.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("AI Response", systemImage: "sparkles")
-                                .font(.headline)
-
-                            Spacer()
-
-                            if isGenerating {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
-                        Divider()
-
-                        MarkdownText(markdown: streamingText)
-                            .font(.body)
+                        // Generate button
+                        CatalystPrimaryButton(
+                            "Generate Review",
+                            icon: "brain.fill",
+                            isLoading: isGenerating,
+                            isEnabled: selectedMemberId != nil
+                        ) {
+                            Task { await generate() }
+                        }
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .padding()
         }
     }
 

@@ -18,17 +18,30 @@ struct TagSection: View {
     @State private var showingAddStrength = false
     @State private var showingAddWeakness = false
     @State private var tagToEdit: StrengthWeakness? = nil
+    @State private var isExpanded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Section header
-            HStack {
-                Label("Strengths & Growth Areas", systemImage: "star.fill")
-                    .font(.headline)
-                Spacer()
+            // Section header with collapse button
+            Button {
+                withAnimation(.smooth) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Label("Strengths & Growth Areas", systemImage: "star.fill")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
+                        .foregroundStyle(.secondary)
+                        .font(.title3)
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            Divider()
+            if isExpanded {
+                Divider()
 
             // Strengths subsection
             VStack(alignment: .leading, spacing: 8) {
@@ -103,6 +116,7 @@ struct TagSection: View {
                     }
                 }
             }
+            }  // End if isExpanded
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))

@@ -76,7 +76,15 @@ private struct MemberDetailContent: View {
                 // Sections
                 VStack(spacing: 16) {
                     TagSection(member: member)
+                    
+                    // Behavioral radar chart (right after strengths/weaknesses)
+                    MemberRadar(member: member)
+                    
                     TechnicalStackSection(member: member)
+                    
+                    // Technical radar chart (right after technical stack)
+                    TechnicalRadar(member: member)
+                    
                     ObservationSection(member: member)
                     IDPSection(member: member)
                     PromotionReadinessSection(member: member)
