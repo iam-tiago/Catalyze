@@ -27,9 +27,11 @@ struct CatalyzeApp: App {
     init() {
         do {
             self.container = try PersistenceController.makeContainer()
+            print("✓ ModelContainer initialized successfully")
         } catch {
             // Last-resort fallback. Logged for diagnostics.
-            print("[Catalyze] Failed to open persistent store: \(error)")
+            print("✗ Failed to open persistent store: \(error)")
+            print("⚠️  Falling back to in-memory container. Data will NOT persist!")
             // swiftlint:disable:next force_try
             self.container = try! PersistenceController.makePreviewContainer()
         }
