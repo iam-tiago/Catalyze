@@ -16,6 +16,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 // MARK: - StrengthWeakness ---------------------------------------------------
 
@@ -121,6 +122,10 @@ final class TeamMember {
     var role: String = ""
     var seniorityRaw: String = Seniority.t2_1.rawValue
     var photoUrl: String? = nil
+    
+    /// Photo data for locally-picked images (from Photos library)
+    /// Takes precedence over photoUrl when both exist
+    @Attribute(.externalStorage) var photoData: Data? = nil
 
     /// Stack proficiencies. `cascade` because they only exist as part
     /// of the member.
@@ -205,5 +210,23 @@ final class TeamMember {
                 .filter { !$0.isEmpty }
                 .joined(separator: "\n")
         }
+    }
+    
+    /// Helper to get avatar image (prioritizes photoData over photoUrl)
+    var avatarImage: Image? {
+        #if os(iOS) || os(macOS)
+        if let data = photoData {
+            #if os(iOS)
+            if let uiImage = UIImage(data: data) {
+                return Image(uiImage: uiImage)
+            }
+            #elseif os(macOS)
+            if let nsImage = NSImage(data: data) {
+                return Image(nsImage: nsImage)
+            }
+            #endif
+        }
+        #endif
+        return nil
     }
 }

@@ -19,39 +19,34 @@ struct InsightsView: View {
     @State private var selectedTab: InsightType = .individual
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            IndividualInsightTab()
-                .tabItem {
-                    Label("Individual", systemImage: "person.fill")
-                }
-                .tag(InsightType.individual)
-
-            SituationalAdviceTab()
-                .tabItem {
-                    Label("Situational", systemImage: "lightbulb.fill")
-                }
-                .tag(InsightType.situational)
-
-            TeamInsightTab()
-                .tabItem {
-                    Label("Team", systemImage: "person.3.fill")
-                }
-                .tag(InsightType.team)
-
-            OneOnOnePrepTab()
-                .tabItem {
-                    Label("1:1 Prep", systemImage: "bubble.left.and.bubble.right.fill")
-                }
-                .tag(InsightType.oneOnOnePrep)
-
-            PerformanceReviewTab()
-                .tabItem {
-                    Label("Perf Review", systemImage: "doc.text.fill")
-                }
-                .tag(InsightType.perfReview)
+        Group {
+            switch selectedTab {
+            case .individual:
+                IndividualInsightTab()
+            case .situational:
+                SituationalAdviceTab()
+            case .team:
+                TeamInsightTab()
+            case .oneOnOnePrep:
+                OneOnOnePrepTab()
+            case .perfReview:
+                PerformanceReviewTab()
+            }
         }
         .navigationTitle("AI Insights")
-        .tabViewStyle(.automatic)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Insight Type", selection: $selectedTab) {
+                    Text("Individual").tag(InsightType.individual)
+                    Text("Situational").tag(InsightType.situational)
+                    Text("Team").tag(InsightType.team)
+                    Text("1:1 Prep").tag(InsightType.oneOnOnePrep)
+                    Text("Review").tag(InsightType.perfReview)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 600)
+            }
+        }
     }
 }
 
@@ -69,79 +64,128 @@ private struct IndividualInsightTab: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Input section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Generate Insight")
-                        .font(.headline)
-
-                    if members.isEmpty {
-                        Text("No team members yet. Add members in the Team tab.")
-                            .foregroundStyle(.secondary)
-                            .padding()
-                    } else {
-                        Picker("Select Member", selection: $selectedMemberId) {
-                            Text("Choose a member...").tag(nil as String?)
-
-                            ForEach(members) { member in
-                                Text(member.name).tag(member.id as String?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-
-                        Button {
-                            Task { await generate() }
-                        } label: {
-                            if isGenerating {
-                                HStack {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                    Text("Generating...")
-                                }
-                            } else {
-                                Label("Generate Insight", systemImage: "brain.fill")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(selectedMemberId == nil || isGenerating)
-                    }
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                // Output section
-                if !streamingText.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Input section - larger card
+                    VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Label("AI Response", systemImage: "sparkles")
-                                .font(.headline)
-
+                            Label("Generate Insight", systemImage: "brain.fill")
+                                .font(.title2.bold())
                             Spacer()
-
-                            if isGenerating {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
                         }
-
+                        
                         Divider()
 
-                        Text(streamingText)
-                            .font(.body)
-                            .textSelection(.enabled)
+                        if members.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "person.3.slash")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.secondary)
+                                Text("No team members yet")
+                                    .font(.headline)
+                                Text("Add members in the Team tab to generate insights.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 32)
+                        } else {
+                            VStack(spacing: 16) {
+                                // Member picker
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Team Member")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Picker("Select Member", selection: $selectedMemberId) {
+                                        Text("Choose a member...").tag(nil as String?)
+
+                                        ForEach(members) { member in
+                                            Text(member.name).tag(member.id as String?)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+
+                                // Generate button
+                                Button {
+                                    Task { await generate() }
+                                } label: {
+                                    if isGenerating {
+                                        HStack {
+                                            ProgressView()
+                                                .controlSize(.small)
+                                            Text("Generating Insight...")
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                    } else {
+                                        Label("Generate AI Insight", systemImage: "sparkles")
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .disabled(selectedMemberId == nil || isGenerating)
+                            }
+                        }
+
+                        if let error = errorMessage {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.red)
+                                Text(error)
+                                    .font(.callout)
+                                    .foregroundStyle(.red)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                        }
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                    // Output section
+                    if !streamingText.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Label("AI Response", systemImage: "sparkles")
+                                    .font(.title2.bold())
+
+                                Spacer()
+
+                                if isGenerating {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                        Text("Streaming...")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            Text(streamingText)
+                                .font(.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(24)
+                        .frame(maxWidth: .infinity)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    }
                 }
+                .padding(24)
+                .frame(minWidth: geometry.size.width)
             }
-            .padding()
         }
     }
 

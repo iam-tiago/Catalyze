@@ -85,8 +85,12 @@ private struct MemberCard: View {
             HStack(spacing: 12) {
                 // Avatar
                 Group {
-                    if let urlString = member.photoUrl,
-                       let url = URL(string: urlString) {
+                    if let avatarImage = member.avatarImage {
+                        avatarImage
+                            .resizable()
+                            .scaledToFill()
+                    } else if let urlString = member.photoUrl,
+                              let url = URL(string: urlString) {
                         AsyncImage(url: url) { image in
                             image
                                 .resizable()

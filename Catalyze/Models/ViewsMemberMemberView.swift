@@ -60,6 +60,8 @@ struct MemberView: View {
 // MARK: - Member Detail Content ----------------------------------------------
 
 private struct MemberDetailContent: View {
+    @Environment(AppStore.self) private var store
+    
     let member: TeamMember
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -74,15 +76,7 @@ private struct MemberDetailContent: View {
                 // Sections
                 VStack(spacing: 16) {
                     TagSection(member: member)
-                    
-                    // Charts section
-                    VStack(spacing: 16) {
-                        MemberRadar(member: member)
-                        TechnicalRadar(member: member)
-                    }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    
+                    TechnicalStackSection(member: member)
                     ObservationSection(member: member)
                     IDPSection(member: member)
                     PromotionReadinessSection(member: member)
@@ -94,6 +88,15 @@ private struct MemberDetailContent: View {
         }
         .navigationTitle(member.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    store.setActiveView(.team)
+                } label: {
+                    Label("Back to Team", systemImage: "chevron.left")
+                }
+            }
+        }
     }
 }
 
@@ -110,8 +113,12 @@ private struct MemberHeader: View {
             HStack(spacing: 16) {
                 // Avatar
                 Group {
-                    if let urlString = member.photoUrl,
-                       let url = URL(string: urlString) {
+                    if let avatarImage = member.avatarImage {
+                        avatarImage
+                            .resizable()
+                            .scaledToFill()
+                    } else if let urlString = member.photoUrl,
+                              let url = URL(string: urlString) {
                         AsyncImage(url: url) { image in
                             image
                                 .resizable()
