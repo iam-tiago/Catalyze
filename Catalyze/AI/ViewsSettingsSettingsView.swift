@@ -212,16 +212,12 @@ struct SettingsView: View {
                     .transition(.opacity)
                 }
                 
-                Divider()
-                
                 // Team Management
                 Button {
                     showingTeamManagement = true
                 } label: {
                     Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
                 }
-                
-                Divider()
                 
                 Button {
                     // Export functionality (placeholder)

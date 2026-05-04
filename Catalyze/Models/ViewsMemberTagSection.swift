@@ -13,6 +13,8 @@ import SwiftUI
 import SwiftData
 
 struct TagSection: View {
+    @Environment(\.modelContext) private var context
+    
     let member: TeamMember
 
     @State private var showingAddStrength = false
@@ -68,12 +70,13 @@ struct TagSection: View {
                         .foregroundStyle(.tertiary)
                         .padding(.vertical, 8)
                 } else {
-                    FlowLayout(spacing: 8) {
+                    VStack(spacing: 8) {
                         ForEach(member.strengths) { strength in
-                            TagChip(tag: strength)
-                                .onTapGesture {
-                                    tagToEdit = strength
-                                }
+                            TagRow(
+                                tag: strength,
+                                onTap: { tagToEdit = strength },
+                                onDelete: { deleteTag(strength) }
+                            )
                         }
                     }
                 }
@@ -106,12 +109,13 @@ struct TagSection: View {
                         .foregroundStyle(.tertiary)
                         .padding(.vertical, 8)
                 } else {
-                    FlowLayout(spacing: 8) {
+                    VStack(spacing: 8) {
                         ForEach(member.weaknesses) { weakness in
-                            TagChip(tag: weakness)
-                                .onTapGesture {
-                                    tagToEdit = weakness
-                                }
+                            TagRow(
+                                tag: weakness,
+                                onTap: { tagToEdit = weakness },
+                                onDelete: { deleteTag(weakness) }
+                            )
                         }
                     }
                 }
@@ -130,40 +134,69 @@ struct TagSection: View {
             TagForm(member: member, kind: tag.kind, tagToEdit: tag)
         }
     }
+    
+    private func deleteTag(_ tag: StrengthWeakness) {
+        context.delete(tag)
+        try? context.save()
+    }
 }
 
-// MARK: - Tag Chip -----------------------------------------------------------
+// MARK: - Tag Row -----------------------------------------------------------
 
-private struct TagChip: View {
+private struct TagRow: View {
     let tag: StrengthWeakness
+    let onTap: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 12) {
             // Intensity indicator (dots)
             HStack(spacing: 2) {
                 ForEach(0..<intensityDotCount, id: \.self) { _ in
                     Circle()
                         .fill(colorForKind)
-                        .frame(width: 5, height: 5)
+                        .frame(width: 6, height: 6)
                 }
             }
 
             // Category label
             Text(tag.category)
-                .font(.subheadline)
-                .lineLimit(1)
+                .font(.body.weight(.medium))
+
+            Spacer()
+            
+            // Intensity badge
+            Text(tag.intensity.rawValue)
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(colorForKind.opacity(0.15), in: Capsule())
+                .foregroundStyle(colorForKind)
 
             // Note indicator
             if tag.note != nil && !tag.note!.isEmpty {
                 Image(systemName: "note.text")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            
+            // Delete button
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(colorForKind.opacity(0.1), in: Capsule())
-        .foregroundStyle(colorForKind)
+        .padding(.vertical, 10)
+        .background(colorForKind.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
     }
 
     private var intensityDotCount: Int {
@@ -176,22 +209,6 @@ private struct TagChip: View {
 
     private var colorForKind: Color {
         tag.kind == .strength ? .green : .orange
-    }
-}
-
-// MARK: - Flow Layout --------------------------------------------------------
-
-private struct FlowLayout<Content: View>: View {
-    let spacing: CGFloat
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        // Simple horizontal layout for now. A full flow layout would
-        // calculate available width and wrap to multiple lines.
-        // For most cases (3–5 tags per section), HStack is sufficient.
-        LazyVStack(alignment: .leading, spacing: spacing) {
-            content()
-        }
     }
 }
 
