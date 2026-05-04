@@ -16,6 +16,19 @@ struct TeamOverview: View {
     @Query(sort: \TeamMember.name) private var members: [TeamMember]
     
     @State private var isExpanded = true
+    @State private var selectedRadarType: RadarType = .behavioral
+    
+    enum RadarType: String, CaseIterable {
+        case behavioral = "Behavioral"
+        case technical = "Technical"
+        
+        var icon: String {
+            switch self {
+            case .behavioral: return "person.3.fill"
+            case .technical: return "chevron.left.forwardslash.chevron.right"
+            }
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -156,8 +169,29 @@ struct TeamOverview: View {
                         }
                     }
                     
-                    // Team radar
-                    TeamRadar()
+                    // Team radar with toggle
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Radar type picker
+                        Picker("Radar Type", selection: $selectedRadarType) {
+                            ForEach(RadarType.allCases, id: \.self) { type in
+                                Label(type.rawValue, systemImage: type.icon)
+                                    .tag(type)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+                        
+                        // Show appropriate radar based on selection
+                        switch selectedRadarType {
+                        case .behavioral:
+                            TeamRadar()
+                                .transition(.opacity.combined(with: .scale))
+                        case .technical:
+                            TeamTechnicalRadar()
+                                .transition(.opacity.combined(with: .scale))
+                        }
+                    }
+                    .animation(.smooth, value: selectedRadarType)
                 }
                 .padding()
             }
