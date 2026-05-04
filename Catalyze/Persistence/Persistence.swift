@@ -83,7 +83,7 @@ enum PersistenceController {
         #if DEBUG
         print("📦 SwiftData container created")
         print("   Store URL: \(config.url)")
-        print("   CloudKit: \(config.cloudKitDatabase == .none ? "DISABLED" : "ENABLED")")
+        print("   CloudKit: DISABLED (local persistence only)")
         #endif
         
         return container
