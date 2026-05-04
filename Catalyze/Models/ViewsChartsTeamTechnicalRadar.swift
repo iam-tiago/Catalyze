@@ -105,35 +105,61 @@ struct TeamTechnicalRadar: View {
             "Security"
         ]
         
-        // Calculate totals for each category
-        var categoryTotals: [String: (sum: Double, count: Int)] = [:]
+        // Calculate totals for each category, tracking strengths and weaknesses separately
+        var categoryData: [String: (strengthSum: Double, strengthCount: Int, weaknessSum: Double, weaknessCount: Int)] = [:]
         
         for member in members {
             for tag in member.strengths + member.weaknesses {
                 guard technicalCategories.contains(tag.category) else { continue }
                 
                 let value = intensityToValue(tag.intensity, isStrength: tag.kind == .strength)
+                let isStrength = tag.kind == .strength
                 
-                if var existing = categoryTotals[tag.category] {
-                    existing.sum += value
-                    existing.count += 1
-                    categoryTotals[tag.category] = existing
+                if var existing = categoryData[tag.category] {
+                    if isStrength {
+                        existing.strengthSum += value
+                        existing.strengthCount += 1
+                    } else {
+                        existing.weaknessSum += value
+                        existing.weaknessCount += 1
+                    }
+                    categoryData[tag.category] = existing
                 } else {
-                    categoryTotals[tag.category] = (value, 1)
+                    if isStrength {
+                        categoryData[tag.category] = (value, 1, 0, 0)
+                    } else {
+                        categoryData[tag.category] = (0, 0, value, 1)
+                    }
                 }
             }
         }
         
         // Build radar data with ALL categories (fixed order, 0 if no data)
         return technicalCategories.map { category in
+            let data = categoryData[category]
+            let strengthAvg = data.map { $0.strengthCount > 0 ? $0.strengthSum / Double($0.strengthCount) : 0.0 } ?? 0.0
+            let weaknessAvg = data.map { $0.weaknessCount > 0 ? $0.weaknessSum / Double($0.weaknessCount) : 0.0 } ?? 0.0
+            
+            // Use the max value from either strengths or weaknesses, but track which type
+            let hasStrength = (data?.strengthCount ?? 0) > 0
+            let hasWeakness = (data?.weaknessCount ?? 0) > 0
+            
             let value: Double
-            if let totals = categoryTotals[category] {
-                value = totals.sum / Double(totals.count)
+            let isStrengthDominant: Bool
+            
+            if hasStrength && hasWeakness {
+                // Both exist, use average
+                value = (strengthAvg + weaknessAvg) / 2
+                isStrengthDominant = strengthAvg >= weaknessAvg
+            } else if hasStrength {
+                value = strengthAvg
+                isStrengthDominant = true
             } else {
-                value = 0.0
+                value = weaknessAvg
+                isStrengthDominant = false
             }
             
-            return TeamTechRadarDataPoint(category: category, value: value)
+            return TeamTechRadarDataPoint(category: category, value: value, isStrength: isStrengthDominant, hasData: hasStrength || hasWeakness)
         }
     }
     
@@ -176,6 +202,15 @@ private struct TeamTechRadarDataPoint: Identifiable {
     let id = UUID()
     let category: String
     let value: Double
+    let isStrength: Bool
+    let hasData: Bool
+    
+    init(category: String, value: Double, isStrength: Bool = true, hasData: Bool = true) {
+        self.category = category
+        self.value = value
+        self.isStrength = isStrength
+        self.hasData = hasData
+    }
 }
 
 // MARK: - Stat Box -----------------------------------------------------------
@@ -250,38 +285,47 @@ private struct TeamTechnicalRadarChartView: View {
                 }
                 .fill(
                     LinearGradient(
-                        colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+                        colors: [.green.opacity(0.2), .orange.opacity(0.2)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 )
                 
-                // Data line (outline)
-                Path { path in
-                    for (index, point) in data.enumerated() {
-                        let angle = angleForIndex(index)
-                        let distance = radius * (point.value / maxValue)
-                        let coordinate = pointOnCircle(center: center, radius: distance, angle: angle)
-                        
-                        if index == 0 {
-                            path.move(to: coordinate)
-                        } else {
-                            path.addLine(to: coordinate)
-                        }
+                // Data line segments (colored by point type)
+                ForEach(0..<data.count, id: \.self) { index in
+                    let point = data[index]
+                    let nextIndex = (index + 1) % data.count
+                    let nextPoint = data[nextIndex]
+                    
+                    let angle1 = angleForIndex(index)
+                    let distance1 = radius * (point.value / maxValue)
+                    let coord1 = pointOnCircle(center: center, radius: distance1, angle: angle1)
+                    
+                    let angle2 = angleForIndex(nextIndex)
+                    let distance2 = radius * (nextPoint.value / maxValue)
+                    let coord2 = pointOnCircle(center: center, radius: distance2, angle: angle2)
+                    
+                    Path { path in
+                        path.move(to: coord1)
+                        path.addLine(to: coord2)
                     }
-                    path.closeSubpath()
+                    .stroke(
+                        point.hasData ? (point.isStrength ? Color.green : Color.orange) : Color.gray,
+                        lineWidth: 2.5
+                    )
                 }
-                .stroke(Color.blue, lineWidth: 2.5)
                 
-                // Data points (dots on each vertex)
+                // Data points (colored by type)
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
                     let distance = radius * (point.value / maxValue)
                     let coordinate = pointOnCircle(center: center, radius: distance, angle: angle)
                     
+                    let pointColor = point.hasData ? (point.isStrength ? Color.green : Color.orange) : Color.gray
+                    
                     Circle()
-                        .fill(Color.blue)
+                        .fill(pointColor)
                         .frame(width: 10, height: 10)
                         .overlay {
                             Circle()
@@ -294,17 +338,16 @@ private struct TeamTechnicalRadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 35
+                    let labelDistance = radius + 40
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
                         .font(.caption)
                         .fontWeight(.medium)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .multilineTextAlignment(.center)
-                        .frame(width: 90)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: 100)
                         .position(coordinate)
                         .offset(labelOffset(for: angle))
                 }
@@ -334,28 +377,28 @@ private struct TeamTechnicalRadarChartView: View {
         // Push labels further out based on their position
         if degrees > -90 && degrees < -60 {
             // Top area
-            return CGSize(width: 0, height: -8)
+            return CGSize(width: 0, height: -12)
         } else if degrees >= -60 && degrees < -30 {
             // Top-right
-            return CGSize(width: 8, height: -6)
+            return CGSize(width: 12, height: -8)
         } else if degrees >= -30 && degrees < 30 {
             // Right side
-            return CGSize(width: 10, height: 0)
+            return CGSize(width: 15, height: 0)
         } else if degrees >= 30 && degrees < 60 {
             // Bottom-right
-            return CGSize(width: 8, height: 6)
+            return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
             // Bottom area
-            return CGSize(width: 0, height: 8)
+            return CGSize(width: 0, height: 12)
         } else if degrees >= 120 && degrees < 150 {
             // Bottom-left
-            return CGSize(width: -8, height: 6)
+            return CGSize(width: -12, height: 8)
         } else if degrees >= 150 || degrees < -150 {
             // Left side
-            return CGSize(width: -10, height: 0)
+            return CGSize(width: -15, height: 0)
         } else {
             // Top-left
-            return CGSize(width: -8, height: -6)
+            return CGSize(width: -12, height: -8)
         }
     }
 }
