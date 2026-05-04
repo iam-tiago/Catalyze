@@ -29,7 +29,7 @@ enum ClaudePrompts {
     static func generateIndividualInsight(
         client: ClaudeClient,
         member: TeamMember,
-        observations: [Observation],
+        observations: [TeamObservation],
         onChunk: @escaping @Sendable (String) -> Void
     ) async throws -> String {
 
@@ -77,73 +77,275 @@ enum ClaudePrompts {
         )
     }
 
-    // MARK: - Stubs for the remaining 4 insight types -----------------------
-    //
-    // The app spec mentions these by name in the InsightsView (5 tabs)
-    // but doesn't specify the prompts in the same detail as the
-    // individual one. Stubbed so the InsightsView can compile against
-    // them today — fill in the prompt bodies as those views are built.
+    // MARK: - Situational advice -------------------------------------------
 
+    /// Provide coaching advice for a specific situation, optionally
+    /// contextualized with a team member's profile.
     static func generateSituationalAdvice(
         client: ClaudeClient,
         member: TeamMember?,
         situation: String,
         onChunk: @escaping @Sendable (String) -> Void
     ) async throws -> String {
-        // TODO: fill in prompt per spec when the Insights view lands.
-        let system = "You are an EM coach. Give grounded, specific advice."
-        let user = """
-        Situation: \(situation)
-        Member context: \(member?.name ?? "not member-specific")
+        let system = """
+        You are an expert engineering management coach. Provide specific,
+        actionable advice for the situation described. If a team member is
+        mentioned, tailor the advice to their profile. Hard limit: 300 words.
         """
+
+        var prompt = """
+        Situation:
+        \(situation)
+        """
+
+        if let member = member {
+            prompt += """
+            
+            
+            Related team member:
+            Name: \(member.name)
+            Role: \(member.role)
+            Seniority: \(member.seniority.rawValue)
+            
+            Strengths:
+            \(formatTags(member.strengths))
+            
+            Growth areas:
+            \(formatTags(member.weaknesses))
+            """
+        }
+
+        prompt += """
+        
+        
+        Provide:
+        1. **Recommended approach** — how to handle this situation
+        2. **Key considerations** — what to watch out for
+        3. **Next steps** — concrete actions to take
+        """
+
         return try await client.complete(
             system: system,
-            messages: [ChatMessage(role: "user", content: user)],
+            messages: [ChatMessage(role: "user", content: prompt)],
             maxTokens: 800,
             onChunk: onChunk
         )
     }
 
+    // MARK: - Team insight --------------------------------------------------
+
+    /// Analyze the entire team for patterns, health signals, and
+    /// recommendations.
     static func generateTeamInsight(
         client: ClaudeClient,
         members: [TeamMember],
         onChunk: @escaping @Sendable (String) -> Void
     ) async throws -> String {
-        // TODO
-        let user = "Analyze this team:\n" +
-            members.map { "- \($0.name) (\($0.seniority.rawValue))" }
-                   .joined(separator: "\n")
+        let system = """
+        You are an expert engineering management coach analyzing an entire
+        team. Identify patterns, health signals, and provide strategic
+        recommendations. Hard limit: 400 words.
+        """
+
+        var prompt = """
+        Analyze this team and provide insights:
+        
+        ## Team Composition
+        Total members: \(members.count)
+        """
+
+        // Seniority distribution
+        let seniorityGroups = Dictionary(grouping: members) { $0.seniority }
+        for (seniority, memberList) in seniorityGroups.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+            prompt += "\n- \(seniority.rawValue): \(memberList.count)"
+        }
+
+        // Top team strengths (most common strength categories)
+        let allStrengths = members.flatMap { $0.strengths }
+        let strengthCounts = Dictionary(grouping: allStrengths) { $0.category }
+            .mapValues { $0.count }
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+
+        prompt += "\n\n## Common Team Strengths"
+        for (category, count) in strengthCounts {
+            prompt += "\n- \(category) (\(count) members)"
+        }
+
+        // Top team growth areas
+        let allWeaknesses = members.flatMap { $0.weaknesses }
+        let weaknessCounts = Dictionary(grouping: allWeaknesses) { $0.category }
+            .mapValues { $0.count }
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+
+        prompt += "\n\n## Common Growth Areas"
+        for (category, count) in weaknessCounts {
+            prompt += "\n- \(category) (\(count) members)"
+        }
+
+        // IDP stats
+        let activeIDPs = members.flatMap { $0.idps ?? [] }
+            .filter { $0.status == .active }
+
+        prompt += """
+        
+        
+        ## Development Activity
+        - Active IDPs: \(activeIDPs.count)
+        - Members with active plans: \(members.filter { !($0.idps ?? []).filter { $0.status == .active }.isEmpty }.count)
+        
+        Provide:
+        1. **Team health assessment** — overall strengths and risks
+        2. **Capability gaps** — what skills/areas need attention
+        3. **Recommended actions** — strategic next steps for the EM
+        """
+
         return try await client.complete(
-            messages: [ChatMessage(role: "user", content: user)],
+            system: system,
+            messages: [ChatMessage(role: "user", content: prompt)],
+            maxTokens: 1000,
             onChunk: onChunk
         )
     }
 
+    // MARK: - 1:1 prep ------------------------------------------------------
+
+    /// Prepare talking points and agenda items for an upcoming one-on-one
+    /// with a specific team member.
     static func generateOneOnOnePrep(
         client: ClaudeClient,
         member: TeamMember,
-        recentObservations: [Observation],
+        recentObservations: [TeamObservation],
         onChunk: @escaping @Sendable (String) -> Void
     ) async throws -> String {
-        // TODO
-        let user = "Prepare a 1:1 agenda for \(member.name)."
+        let system = """
+        You are an expert engineering management coach helping prepare for
+        a one-on-one meeting. Suggest agenda items, talking points, and
+        questions to ask. Hard limit: 300 words.
+        """
+
+        let recent = recentObservations
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(10)
+
+        let activeIDPs = (member.idps ?? []).filter { $0.status == .active }
+
+        var prompt = """
+        Prepare a 1:1 agenda for:
+        
+        **Member:** \(member.name)
+        **Role:** \(member.role)
+        **Seniority:** \(member.seniority.rawValue)
+        
+        **Recent observations (\(recent.count)):**
+        """
+
+        for obs in recent {
+            prompt += "\n- [\(obs.context.rawValue)] \(obs.text)"
+        }
+
+        prompt += "\n\n**Active development plans:** \(activeIDPs.count)"
+
+        for idp in activeIDPs.prefix(3) {
+            let progress = "\(idp.sortedActions.filter { $0.done }.count)/\(idp.sortedActions.count)"
+            prompt += "\n- \(idp.title) (progress: \(progress))"
+        }
+
+        prompt += """
+        
+        
+        **Strengths:**
+        \(formatTags(member.strengths))
+        
+        **Growth areas:**
+        \(formatTags(member.weaknesses))
+        
+        Provide:
+        1. **Key topics** — what to discuss based on recent activity
+        2. **Questions to ask** — open-ended questions for the member
+        3. **Follow-ups** — items to check on from previous 1:1s
+        """
+
         return try await client.complete(
-            messages: [ChatMessage(role: "user", content: user)],
+            system: system,
+            messages: [ChatMessage(role: "user", content: prompt)],
+            maxTokens: 800,
             onChunk: onChunk
         )
     }
 
+    // MARK: - Performance review --------------------------------------------
+
+    /// Generate a performance review draft based on observations, IDPs,
+    /// and the member's profile.
     static func generatePerformanceReview(
         client: ClaudeClient,
         member: TeamMember,
-        observations: [Observation],
+        observations: [TeamObservation],
         idps: [DevelopmentPlan],
         onChunk: @escaping @Sendable (String) -> Void
     ) async throws -> String {
-        // TODO
-        let user = "Draft a performance review for \(member.name)."
+        let system = """
+        You are an expert engineering management coach helping draft a
+        performance review. Be specific, balanced, and actionable. Include
+        both accomplishments and growth opportunities. Hard limit: 500 words.
+        """
+
+        let recentObs = observations
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(15)
+
+        let completedIDPs = idps.filter { $0.status == .completed }
+        let activeIDPs = idps.filter { $0.status == .active }
+
+        var prompt = """
+        Draft a performance review for:
+        
+        **Member:** \(member.name)
+        **Role:** \(member.role)
+        **Seniority:** \(member.seniority.rawValue)
+        
+        **Strengths:**
+        \(formatTags(member.strengths))
+        
+        **Growth areas:**
+        \(formatTags(member.weaknesses))
+        
+        **Recent observations (\(recentObs.count)):**
+        """
+
+        for obs in recentObs {
+            prompt += "\n- [\(obs.context.rawValue)] \(obs.text)"
+        }
+
+        prompt += "\n\n**Development activity:**"
+        prompt += "\n- Completed plans: \(completedIDPs.count)"
+        prompt += "\n- Active plans: \(activeIDPs.count)"
+
+        for idp in completedIDPs.prefix(3) {
+            prompt += "\n  - ✓ \(idp.title)"
+        }
+
+        for idp in activeIDPs.prefix(3) {
+            let progress = "\(idp.sortedActions.filter { $0.done }.count)/\(idp.sortedActions.count)"
+            prompt += "\n  - → \(idp.title) (\(progress))"
+        }
+
+        prompt += """
+        
+        
+        Provide a structured review with:
+        1. **Summary** — overall performance this period
+        2. **Key accomplishments** — specific wins and impact (3-4 bullets)
+        3. **Areas for growth** — constructive feedback (2-3 bullets)
+        4. **Goals for next period** — what to focus on next
+        """
+
         return try await client.complete(
-            messages: [ChatMessage(role: "user", content: user)],
+            system: system,
+            messages: [ChatMessage(role: "user", content: prompt)],
+            maxTokens: 1200,
             onChunk: onChunk
         )
     }

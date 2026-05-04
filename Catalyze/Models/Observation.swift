@@ -3,13 +3,15 @@
 //  Catalyze
 //
 //  Equivalent to the TS `Observation` interface.
+//  Note: Renamed from `Observation` to `TeamObservation` to avoid conflict
+//  with Swift's Observation framework.
 //
 
 import Foundation
 import SwiftData
 
 @Model
-final class Observation {
+final class TeamObservation {
     @Attribute(.unique) var id: String = UUID().uuidString
     var memberId: String = ""
     var text: String = ""
@@ -38,3 +40,7 @@ final class Observation {
         set { contextRaw = newValue.rawValue }
     }
 }
+// Type alias for backward compatibility with existing code
+// Note: Use `TeamObservation` directly in new code to avoid ambiguity
+typealias CatalyzeObservation = TeamObservation
+

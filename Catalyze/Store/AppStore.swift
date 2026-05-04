@@ -109,12 +109,12 @@ final class AppStore {
         try? context.save()
     }
 
-    func addObservation(_ obs: Observation, in context: ModelContext) {
+    func addObservation(_ obs: TeamObservation, in context: ModelContext) {
         context.insert(obs)
         try? context.save()
     }
 
-    func deleteObservation(_ obs: Observation, in context: ModelContext) {
+    func deleteObservation(_ obs: TeamObservation, in context: ModelContext) {
         context.delete(obs)
         try? context.save()
     }

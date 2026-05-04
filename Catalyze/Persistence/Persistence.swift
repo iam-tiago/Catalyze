@@ -34,7 +34,7 @@ enum CatalyzeSchemaV1: VersionedSchema {
             TeamMember.self,
             StrengthWeakness.self,
             StackEntry.self,
-            Observation.self,
+            TeamObservation.self,
             Insight.self,
             DevelopmentPlan.self,
             IDPAction.self,

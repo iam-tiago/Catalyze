@@ -37,35 +37,10 @@ struct CatalyzeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppLayout()
                 .environment(store)
         }
         .modelContainer(container)
     }
 }
 
-// MARK: - ContentView (placeholder) ------------------------------------------
-//
-// The real layout (NavigationSplitView with a sidebar + detail) lives in
-// Views/Layout/AppLayout.swift, which will be built in the next step.
-// This placeholder keeps the project compiling end-to-end.
-
-struct ContentView: View {
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        // Will be replaced by AppLayout() — see Views/Layout/AppLayout.swift
-        // (next step). For now we render a placeholder so the project
-        // builds and runs.
-        VStack(spacing: 16) {
-            Image(systemName: "person.3.sequence.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.tint)
-            Text("Catalyze")
-                .font(.largeTitle.bold())
-            Text("Layout coming in the next step.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-    }
-}

@@ -144,7 +144,7 @@ final class TeamMember {
     var tags: [StrengthWeakness]? = []
 
     @Relationship(deleteRule: .cascade)
-    var observations: [Observation]? = []
+    var observations: [TeamObservation]? = []
 
     @Relationship(deleteRule: .cascade)
     var idps: [DevelopmentPlan]? = []
