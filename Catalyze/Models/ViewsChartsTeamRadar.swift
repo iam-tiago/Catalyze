@@ -209,16 +209,6 @@ private struct TeamRadarChartView: View {
                         .frame(width: radius * 2 * scale, height: radius * 2 * scale)
                 }
                 
-                // Grid value labels
-                ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { scale in
-                    let value = maxValue * scale
-                    let labelRadius = radius * scale
-                    Text(String(format: "%.1f", value))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .position(x: center.x + 5, y: center.y - labelRadius - 5)
-                }
-                
                 // Axes (spokes radiating from center)
                 ForEach(0..<data.count, id: \.self) { index in
                     let angle = angleForIndex(index)

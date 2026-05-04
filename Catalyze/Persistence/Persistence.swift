@@ -64,16 +64,29 @@ enum PersistenceController {
     /// directory and syncs via CloudKit.
     static func makeContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
+        
+        // For debugging: temporarily disable CloudKit if having sync issues
+        // Change .automatic to .none to disable CloudKit sync
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
             cloudKitDatabase: .automatic   // uses container ID from entitlements
         )
-        return try ModelContainer(
+        
+        let container = try ModelContainer(
             for: schema,
             migrationPlan: CatalyzeMigrationPlan.self,
             configurations: [config]
         )
+        
+        // Enable verbose logging for debugging
+        #if DEBUG
+        print("📦 SwiftData container created")
+        print("   Store URL: \(config.url)")
+        print("   CloudKit: \(config.cloudKitDatabase)")
+        #endif
+        
+        return container
     }
 
     /// In-memory container for previews and unit tests. No CloudKit.
@@ -89,5 +102,27 @@ enum PersistenceController {
             migrationPlan: CatalyzeMigrationPlan.self,
             configurations: [config]
         )
+    }
+    
+    /// Debug container - persists locally but WITHOUT CloudKit sync
+    /// Use this if CloudKit is causing issues during development
+    static func makeLocalOnlyContainer() throws -> ModelContainer {
+        let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
+        let config = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none  // Disabled CloudKit
+        )
+        
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: CatalyzeMigrationPlan.self,
+            configurations: [config]
+        )
+        
+        print("📦 Local-only container created (CloudKit disabled)")
+        print("   Store URL: \(config.url)")
+        
+        return container
     }
 }

@@ -42,6 +42,14 @@ struct SettingsView: View {
     
     // Team management
     @State private var showingTeamManagement = false
+    
+    // Export/Import
+    @State private var showingExportActivity = false
+    @State private var exportFileURL: URL?
+    @State private var showingImportPicker = false
+    @State private var showingImportSuccess = false
+    @State private var showingImportError = false
+    @State private var importErrorMessage = ""
 
     var body: some View {
         Form {
@@ -220,13 +228,13 @@ struct SettingsView: View {
                 }
                 
                 Button {
-                    // Export functionality (placeholder)
+                    exportData()
                 } label: {
                     Label("Export Data", systemImage: "square.and.arrow.up")
                 }
 
                 Button {
-                    // Import functionality (placeholder)
+                    showingImportPicker = true
                 } label: {
                     Label("Import Data", systemImage: "square.and.arrow.down")
                 }
@@ -278,6 +286,33 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingTeamManagement) {
             TeamManagementView()
+        }
+        .fileExporter(
+            isPresented: $showingExportActivity,
+            document: exportFileURL.map { CatalyzeDocument(fileURL: $0) },
+            contentType: .json,
+            defaultFilename: "Catalyze-Export-\(Date().formatted(date: .numeric, time: .omitted)).json"
+        ) { result in
+            if case .success = result {
+                // Successfully exported
+            }
+        }
+        .fileImporter(
+            isPresented: $showingImportPicker,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImport(result: result)
+        }
+        .alert("Import Successful", isPresented: $showingImportSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your data has been imported successfully.")
+        }
+        .alert("Import Failed", isPresented: $showingImportError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(importErrorMessage)
         }
     }
 
@@ -539,21 +574,249 @@ struct SettingsView: View {
             }
         }
     }
+    
+    // MARK: - Export/Import --------------------------------------------------
+    
+    private func exportData() {
+        do {
+            // Fetch all team members
+            let descriptor = FetchDescriptor<TeamMember>(sortBy: [SortDescriptor(\.name)])
+            let members = try context.fetch(descriptor)
+            
+            // Create exportable data structure
+            let exportData = ExportData(
+                version: "1.0.0",
+                exportDate: Date(),
+                emProfile: store.emProfile,
+                members: members.map { member in
+                    ExportMember(
+                        id: member.id,
+                        name: member.name,
+                        role: member.role,
+                        seniority: member.seniorityRaw,
+                        photoUrl: member.photoUrl,
+                        photoData: member.photoData,
+                        mentorId: member.mentor?.id,
+                        mentorName: member.mentorName,
+                        externalMentees: member.externalMentees,
+                        stack: (member.stack ?? []).map { entry in
+                            ExportStackEntry(tag: entry.tagRaw, level: entry.levelRaw)
+                        },
+                        tags: (member.tags ?? []).map { tag in
+                            ExportTag(
+                                kind: tag.kindRaw,
+                                category: tag.category,
+                                intensity: tag.intensityRaw,
+                                note: tag.note,
+                                createdAt: tag.createdAt
+                            )
+                        },
+                        observations: (member.observations ?? []).map { obs in
+                            ExportObservation(
+                                text: obs.text,
+                                context: obs.contextRaw,
+                                createdAt: obs.createdAt
+                            )
+                        },
+                        createdAt: member.createdAt,
+                        updatedAt: member.updatedAt
+                    )
+                }
+            )
+            
+            // Encode to JSON
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(exportData)
+            
+            // Write to temporary file
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("catalyze-export.json")
+            try jsonData.write(to: tempURL)
+            
+            exportFileURL = tempURL
+            showingExportActivity = true
+            
+        } catch {
+            print("Export failed: \(error)")
+            importErrorMessage = "Failed to export data: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
+    
+    private func handleImport(result: Result<[URL], Error>) {
+        do {
+            guard let selectedFile = try result.get().first else { return }
+            
+            // Start accessing security-scoped resource
+            guard selectedFile.startAccessingSecurityScopedResource() else {
+                throw NSError(domain: "Catalyze", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to access file"])
+            }
+            defer { selectedFile.stopAccessingSecurityScopedResource() }
+            
+            // Read and decode JSON
+            let jsonData = try Data(contentsOf: selectedFile)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let importData = try decoder.decode(ExportData.self, from: jsonData)
+            
+            // Import members
+            var memberIdMap: [String: TeamMember] = [:]
+            
+            for exportMember in importData.members {
+                let member = TeamMember(
+                    id: exportMember.id,
+                    name: exportMember.name,
+                    role: exportMember.role,
+                    seniority: Seniority(rawValue: exportMember.seniority) ?? .t2_1,
+                    photoUrl: exportMember.photoUrl,
+                    createdAt: exportMember.createdAt,
+                    updatedAt: exportMember.updatedAt
+                )
+                member.photoData = exportMember.photoData
+                member.mentorName = exportMember.mentorName
+                member.externalMentees = exportMember.externalMentees
+                
+                // Import stack
+                member.stack = exportMember.stack.map { entry in
+                    let stackEntry = StackEntry(
+                        tag: StackTag(rawValue: entry.tag) ?? .typescript,
+                        level: StackProficiency(rawValue: entry.level) ?? .learning
+                    )
+                    stackEntry.member = member
+                    context.insert(stackEntry)
+                    return stackEntry
+                }
+                
+                // Import tags
+                member.tags = exportMember.tags.map { tag in
+                    let strengthWeakness = StrengthWeakness(
+                        kind: SWKind(rawValue: tag.kind) ?? .strength,
+                        category: tag.category,
+                        intensity: Intensity(rawValue: tag.intensity) ?? .emerging,
+                        note: tag.note,
+                        createdAt: tag.createdAt
+                    )
+                    strengthWeakness.member = member
+                    context.insert(strengthWeakness)
+                    return strengthWeakness
+                }
+                
+                // Import observations
+                member.observations = exportMember.observations.map { obs in
+                    let observation = TeamObservation(
+                        memberId: member.id,
+                        text: obs.text,
+                        context: ObservationContext(rawValue: obs.context) ?? .oneOnOne,
+                        createdAt: obs.createdAt
+                    )
+                    context.insert(observation)
+                    return observation
+                }
+                
+                context.insert(member)
+                memberIdMap[member.id] = member
+            }
+            
+            // Set up mentor relationships (after all members are created)
+            for exportMember in importData.members {
+                if let mentorId = exportMember.mentorId,
+                   let member = memberIdMap[exportMember.id],
+                   let mentor = memberIdMap[mentorId] {
+                    member.mentor = mentor
+                }
+            }
+            
+            // Import EM profile if included
+            if let emProfile = importData.emProfile {
+                store.setEMProfile(emProfile)
+            }
+            
+            // Save context
+            try context.save()
+            
+            showingImportSuccess = true
+            
+        } catch {
+            print("Import failed: \(error)")
+            importErrorMessage = "Failed to import data: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
 }
 
-// MARK: - Appearance Mode ----------------------------------------------------
+// MARK: - Export/Import Data Structures -------------------------------------
 
-enum AppearanceMode: String, CaseIterable, Codable {
-    case system = "System"
-    case light = "Light"
-    case dark = "Dark"
+struct ExportData: Codable {
+    let version: String
+    let exportDate: Date
+    let emProfile: EMProfile?
+    let members: [ExportMember]
+}
+
+struct ExportMember: Codable {
+    let id: String
+    let name: String
+    let role: String
+    let seniority: String
+    let photoUrl: String?
+    let photoData: Data?
+    let mentorId: String?
+    let mentorName: String?
+    let externalMentees: [String]
+    let stack: [ExportStackEntry]
+    let tags: [ExportTag]
+    let observations: [ExportObservation]
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct ExportStackEntry: Codable {
+    let tag: String
+    let level: String
+}
+
+struct ExportTag: Codable {
+    let kind: String
+    let category: String
+    let intensity: String
+    let note: String?
+    let createdAt: Date
+}
+
+struct ExportObservation: Codable {
+    let text: String
+    let context: String
+    let createdAt: Date
+}
+
+// MARK: - File Document Wrapper ---------------------------------------------
+
+struct CatalyzeDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
     
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
+    let fileURL: URL
+    
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        guard let url = configuration.file.regularFileContents.flatMap({ data in
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("temp-import.json")
+            try? data.write(to: tempURL)
+            return tempURL
+        }) else {
+            throw CocoaError(.fileReadCorruptFile)
         }
+        self.fileURL = url
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = try Data(contentsOf: fileURL)
+        return FileWrapper(regularFileWithContents: data)
     }
 }
 

@@ -56,40 +56,20 @@ struct TechnicalRadar: View {
             
             // Legend
             if hasTechnicalData {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Scale")
-                        .font(.caption.weight(.semibold))
+                HStack(spacing: 16) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+                    Text("Strength")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                     
-                    HStack(spacing: 16) {
-                        ForEach(0..<4) { level in
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(.green)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(proficiencyLabel(level))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 8, height: 8)
-                        Text("Strength")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Circle()
-                            .fill(.orange)
-                            .frame(width: 8, height: 8)
-                        Text("Growth Area")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 8, height: 8)
+                    Text("Growth Area")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -235,16 +215,6 @@ private struct TechnicalRadarChartView: View {
                     Circle()
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                         .frame(width: radius * 2 * scale, height: radius * 2 * scale)
-                }
-                
-                // Grid value labels
-                ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { scale in
-                    let value = maxValue * scale
-                    let labelRadius = radius * scale
-                    Text(String(format: "%.1f", value))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .position(x: center.x + 5, y: center.y - labelRadius - 5)
                 }
                 
                 // Axes
