@@ -14,6 +14,7 @@ import SwiftData
 
 struct AppLayout: View {
     @Environment(AppStore.self) private var store
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
 
     @State private var showingSearch = false
 
@@ -26,6 +27,7 @@ struct AppLayout: View {
             DetailPane()
         }
         .navigationSplitViewStyle(.balanced)
+        .preferredColorScheme(appearanceMode.colorScheme)
         .sheet(isPresented: $showingSearch) {
             GlobalSearch()
         }

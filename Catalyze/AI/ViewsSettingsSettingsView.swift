@@ -272,7 +272,6 @@ struct SettingsView: View {
         .onAppear {
             loadSettings()
         }
-        .preferredColorScheme(appearanceMode.colorScheme)
         .alert("Load Sample Data?", isPresented: $showingSampleDataAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Load Sample Data") {

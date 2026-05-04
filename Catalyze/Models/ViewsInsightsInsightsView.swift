@@ -173,9 +173,8 @@ private struct IndividualInsightTab: View {
 
                             Divider()
 
-                            Text(streamingText)
+                            MarkdownText(markdown: streamingText)
                                 .font(.body)
-                                .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(24)
@@ -312,9 +311,8 @@ private struct SituationalAdviceTab: View {
 
                         Divider()
 
-                        Text(streamingText)
+                        MarkdownText(markdown: streamingText)
                             .font(.body)
-                            .textSelection(.enabled)
                     }
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -452,9 +450,8 @@ private struct TeamInsightTab: View {
 
                         Divider()
 
-                        Text(streamingText)
+                        MarkdownText(markdown: streamingText)
                             .font(.body)
-                            .textSelection(.enabled)
                     }
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -583,9 +580,8 @@ private struct OneOnOnePrepTab: View {
 
                         Divider()
 
-                        Text(streamingText)
+                        MarkdownText(markdown: streamingText)
                             .font(.body)
-                            .textSelection(.enabled)
                     }
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -718,9 +714,8 @@ private struct PerformanceReviewTab: View {
 
                         Divider()
 
-                        Text(streamingText)
+                        MarkdownText(markdown: streamingText)
                             .font(.body)
-                            .textSelection(.enabled)
                     }
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
