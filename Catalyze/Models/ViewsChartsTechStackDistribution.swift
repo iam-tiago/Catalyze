@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Charts
 
 struct TechStackDistribution: View {
@@ -150,33 +151,116 @@ private struct TechStackBar: View {
 // MARK: - Preview ------------------------------------------------------------
 
 #Preview {
-    let container = try! PersistenceController.makePreviewContainer()
+    @Previewable @State var container: ModelContainer = {
+        let container = try! PersistenceController.makePreviewContainer()
+        let context = ModelContext(container)
+        
+        let alice = TeamMember(
+            name: "Alice Chen",
+            role: "Senior iOS Engineer",
+            seniority: .t3_1
+        )
+        
+        // Behavioral strengths
+        let behavioralS1 = StrengthWeakness(
+            kind: .strength,
+            category: "Communication",
+            intensity: .strong,
+            note: "Excellent at explaining complex technical concepts"
+        )
+        behavioralS1.member = alice
+        
+        let behavioralS2 = StrengthWeakness(
+            kind: .strength,
+            category: "Leadership",
+            intensity: .solid
+        )
+        behavioralS2.member = alice
+        
+        // Behavioral growth areas
+        let behavioralW1 = StrengthWeakness(
+            kind: .weakness,
+            category: "Mentoring",
+            intensity: .emerging,
+            note: "Starting to mentor junior developers"
+        )
+        behavioralW1.member = alice
+        
+        // Technical strengths
+        let techS1 = StrengthWeakness(
+            kind: .strength,
+            category: "Code Quality",
+            intensity: .strong,
+            note: "Writes highly maintainable and testable code"
+        )
+        techS1.member = alice
+        
+        let techS2 = StrengthWeakness(
+            kind: .strength,
+            category: "Testing",
+            intensity: .solid
+        )
+        techS2.member = alice
+        
+        let techS3 = StrengthWeakness(
+            kind: .strength,
+            category: "Architecture",
+            intensity: .solid
+        )
+        techS3.member = alice
+        
+        // Technical growth areas
+        let techW1 = StrengthWeakness(
+            kind: .weakness,
+            category: "DevOps",
+            intensity: .developing,
+            note: "Working on improving CI/CD knowledge"
+        )
+        techW1.member = alice
+        
+        let techW2 = StrengthWeakness(
+            kind: .weakness,
+            category: "Security",
+            intensity: .emerging
+        )
+        techW2.member = alice
+        
+        // Tech Stack
+        let stack1 = StackEntry(tag: .swiftUI, level: .expert)
+        stack1.member = alice
+        
+        let stack2 = StackEntry(tag: .typescript, level: .proficient)
+        stack2.member = alice
+        
+        let stack3 = StackEntry(tag: .graphql, level: .advanced)
+        stack3.member = alice
+        
+        let stack4 = StackEntry(tag: .aws, level: .learning)
+        stack4.member = alice
+        
+        let stack5 = StackEntry(tag: .docker, level: .proficient)
+        stack5.member = alice
+        
+        let stack6 = StackEntry(tag: .kotlin, level: .learning)
+        stack6.member = alice
+        
+        // Assign all relationships
+        alice.tags = [
+            behavioralS1, behavioralS2, behavioralW1,
+            techS1, techS2, techS3, techW1, techW2
+        ]
+        alice.stack = [stack1, stack2, stack3, stack4, stack5, stack6]
+        
+        context.insert(alice)
+        try? context.save()
+        
+        return container
+    }()
+    
     let context = ModelContext(container)
+    let alice = try! context.fetch(FetchDescriptor<TeamMember>()).first!
     
-    let alice = TeamMember(
-        name: "Alice Chen",
-        role: "Senior iOS Engineer",
-        seniority: .t3_1
-    )
-    
-    let stack1 = StackEntry(tag: .swiftUI, level: .expert)
-    stack1.member = alice
-    
-    let stack2 = StackEntry(tag: .typescript, level: .proficient)
-    stack2.member = alice
-    
-    let stack3 = StackEntry(tag: .graphql, level: .advanced)
-    stack3.member = alice
-    
-    let stack4 = StackEntry(tag: .aws, level: .learning)
-    stack4.member = alice
-    
-    alice.stack = [stack1, stack2, stack3, stack4]
-    
-    context.insert(alice)
-    try? context.save()
-    
-    return ScrollView {
+    ScrollView {
         TechStackDistribution(member: alice)
             .padding()
     }
