@@ -94,15 +94,14 @@ struct TeamTechnicalRadar: View {
     private var radarData: [TeamTechRadarDataPoint] {
         // Fixed technical categories - always shown in this order
         let technicalCategories = [
-            "Language Mastery",
             "Code Quality",
             "Code Review",
             "Testing",
             "Architecture",
             "DevOps",
-            "Debugging Logic",
-            "Observability",
-            "Security"
+            "Infrastructure",
+            "Debugging",
+            "Observability"
         ]
         
         // Calculate totals for each category, tracking strengths and weaknesses separately
@@ -338,7 +337,7 @@ private struct TeamTechnicalRadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 40
+                    let labelDistance = radius + 55
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
@@ -370,34 +369,24 @@ private struct TeamTechnicalRadarChartView: View {
     }
     
     private func labelOffset(for angle: Double) -> CGSize {
-        // Adjust label position based on angle to avoid overlap with radar
         let normalizedAngle = angle.truncatingRemainder(dividingBy: 2 * .pi)
         let degrees = normalizedAngle * 180 / .pi
         
-        // Push labels further out based on their position
         if degrees > -90 && degrees < -60 {
-            // Top area
             return CGSize(width: 0, height: -12)
         } else if degrees >= -60 && degrees < -30 {
-            // Top-right
             return CGSize(width: 12, height: -8)
         } else if degrees >= -30 && degrees < 30 {
-            // Right side
             return CGSize(width: 15, height: 0)
         } else if degrees >= 30 && degrees < 60 {
-            // Bottom-right
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
-            // Bottom area
             return CGSize(width: 0, height: 12)
         } else if degrees >= 120 && degrees < 150 {
-            // Bottom-left
             return CGSize(width: -12, height: 8)
         } else if degrees >= 150 || degrees < -150 {
-            // Left side
             return CGSize(width: -15, height: 0)
         } else {
-            // Top-left
             return CGSize(width: -12, height: -8)
         }
     }

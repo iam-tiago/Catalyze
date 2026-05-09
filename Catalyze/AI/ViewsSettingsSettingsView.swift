@@ -228,6 +228,20 @@ struct SettingsView: View {
                     Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
                 }
                 
+                // Cleanup Problem Solving tags (temporary migration button)
+                Button(role: .destructive) {
+                    cleanupProblemSolvingTags()
+                } label: {
+                    Label("Cleanup Problem Solving Tags", systemImage: "trash")
+                }
+                
+                // Cleanup technical categories (temporary migration button)
+                Button(role: .destructive) {
+                    cleanupTechnicalCategoriesMigration()
+                } label: {
+                    Label("Cleanup Technical Categories", systemImage: "wrench.and.screwdriver")
+                }
+                
                 Button {
                     exportData()
                 } label: {
@@ -609,6 +623,100 @@ struct SettingsView: View {
     }
     
     // MARK: - Export/Import --------------------------------------------------
+    
+    private func cleanupProblemSolvingTags() {
+        Logger.log("Starting cleanup of 'Problem Solving' tags", level: .info)
+        
+        let descriptor = FetchDescriptor<StrengthWeakness>(
+            predicate: #Predicate { $0.category == "Problem Solving" }
+        )
+        
+        do {
+            let tags = try context.fetch(descriptor)
+            Logger.log("Found \(tags.count) 'Problem Solving' tags to delete", level: .info)
+            
+            for tag in tags {
+                context.delete(tag)
+            }
+            
+            try context.save()
+            Logger.log("Successfully deleted \(tags.count) 'Problem Solving' tags", level: .success)
+            
+            // Show success feedback
+            withAnimation {
+                showingSampleDataSuccess = true
+            }
+            
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation {
+                    showingSampleDataSuccess = false
+                }
+            }
+        } catch {
+            Logger.error(error, context: "Cleanup Problem Solving tags")
+            importErrorMessage = "Failed to cleanup tags: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
+    
+    private func cleanupTechnicalCategoriesMigration() {
+        Logger.log("Starting technical categories cleanup", level: .info)
+        
+        var deletedCount = 0
+        var renamedCount = 0
+        
+        do {
+            // Delete "Language Mastery"
+            let languageMasteryDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Language Mastery" }
+            )
+            let languageMasteryTags = try context.fetch(languageMasteryDescriptor)
+            for tag in languageMasteryTags {
+                context.delete(tag)
+                deletedCount += 1
+            }
+            
+            // Delete "Security"
+            let securityDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Security" }
+            )
+            let securityTags = try context.fetch(securityDescriptor)
+            for tag in securityTags {
+                context.delete(tag)
+                deletedCount += 1
+            }
+            
+            // Rename "Debugging Logic" → "Debugging"
+            let debuggingLogicDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Debugging Logic" }
+            )
+            let debuggingLogicTags = try context.fetch(debuggingLogicDescriptor)
+            for tag in debuggingLogicTags {
+                tag.category = "Debugging"
+                renamedCount += 1
+            }
+            
+            try context.save()
+            Logger.log("Technical cleanup complete: \(deletedCount) deleted, \(renamedCount) renamed", level: .success)
+            
+            // Show success feedback
+            withAnimation {
+                showingSampleDataSuccess = true
+            }
+            
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation {
+                    showingSampleDataSuccess = false
+                }
+            }
+        } catch {
+            Logger.error(error, context: "Technical categories cleanup")
+            importErrorMessage = "Failed to cleanup: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
     
     private func exportData() {
         Logger.log("Export data initiated", level: .info)

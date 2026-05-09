@@ -3,7 +3,7 @@
 //  Catalyze
 //
 //  Behavioral radar chart for a single team member. Shows intensity across
-//  behavioral categories (Communication, Leadership, Problem Solving, etc.)
+//  behavioral categories (Communication, Leadership, EQ, etc.)
 //  using Swift Charts with polar coordinates.
 //
 //  Equivalent to `src/components/Charts/MemberRadar.tsx` in the web app.
@@ -83,10 +83,9 @@ struct MemberRadar: View {
         let behavioralCategories = [
             "Communication",
             "Ownership",
-            "Emotional Intelligence",
+            "EQ",
             "Collaboration",
             "Growth Mindset",
-            "Problem Solving",
             "Leadership",
             "Adaptability",
             "Mentoring"
@@ -300,7 +299,7 @@ private struct RadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 40
+                    let labelDistance = radius + 55
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
@@ -332,34 +331,24 @@ private struct RadarChartView: View {
     }
     
     private func labelOffset(for angle: Double) -> CGSize {
-        // Adjust label position based on angle to avoid overlap with radar
         let normalizedAngle = angle.truncatingRemainder(dividingBy: 2 * .pi)
         let degrees = normalizedAngle * 180 / .pi
         
-        // Push labels further out based on their position
         if degrees > -90 && degrees < -60 {
-            // Top area
             return CGSize(width: 0, height: -12)
         } else if degrees >= -60 && degrees < -30 {
-            // Top-right
             return CGSize(width: 12, height: -8)
         } else if degrees >= -30 && degrees < 30 {
-            // Right side
             return CGSize(width: 15, height: 0)
         } else if degrees >= 30 && degrees < 60 {
-            // Bottom-right
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
-            // Bottom area
             return CGSize(width: 0, height: 12)
         } else if degrees >= 120 && degrees < 150 {
-            // Bottom-left
             return CGSize(width: -12, height: 8)
         } else if degrees >= 150 || degrees < -150 {
-            // Left side
             return CGSize(width: -15, height: 0)
         } else {
-            // Top-left
             return CGSize(width: -12, height: -8)
         }
     }
@@ -384,7 +373,7 @@ private struct RadarChartView: View {
         let s2 = StrengthWeakness(kind: .strength, category: "Leadership", intensity: .solid)
         s2.member = member
         
-        let s3 = StrengthWeakness(kind: .strength, category: "Problem Solving", intensity: .solid)
+        let s3 = StrengthWeakness(kind: .strength, category: "EQ", intensity: .solid)
         s3.member = member
         
         let w1 = StrengthWeakness(kind: .weakness, category: "Mentoring", intensity: .emerging)

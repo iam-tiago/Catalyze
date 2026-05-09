@@ -80,10 +80,9 @@ struct TeamRadar: View {
         let behavioralCategories = [
             "Communication",
             "Ownership",
-            "Emotional Intelligence",
+            "EQ",
             "Collaboration",
             "Growth Mindset",
-            "Problem Solving",
             "Leadership",
             "Adaptability",
             "Mentoring"
@@ -326,7 +325,7 @@ private struct TeamRadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 40
+                    let labelDistance = radius + 45
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
@@ -337,6 +336,7 @@ private struct TeamRadarChartView: View {
                         .multilineTextAlignment(.center)
                         .frame(width: 100)
                         .position(coordinate)
+                        .offset(labelOffset(for: angle))
                         .offset(labelOffset(for: angle))
                 }
             }
@@ -406,7 +406,7 @@ private struct TeamRadarChartView: View {
     alice.tags = [s1, s2]
     
     let bob = TeamMember(name: "Bob", role: "Backend Engineer", seniority: .t2_2)
-    let s3 = StrengthWeakness(kind: .strength, category: "Problem Solving", intensity: .strong)
+    let s3 = StrengthWeakness(kind: .strength, category: "Ownership", intensity: .strong)
     s3.member = bob
     let w1 = StrengthWeakness(kind: .weakness, category: "Communication", intensity: .developing)
     w1.member = bob

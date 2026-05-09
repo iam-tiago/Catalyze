@@ -226,15 +226,14 @@ private struct TagRow: View {
 enum BehavioralCategory {
     // Technical categories that should NOT appear in behavioral section
     static let technicalCategories: [String] = [
-        "Language Mastery",
         "Code Quality",
         "Code Review",
         "Testing",
         "Architecture",
         "DevOps",
-        "Debugging Logic",
-        "Observability",
-        "Security"
+        "Infrastructure",
+        "Debugging",
+        "Observability"
     ]
     
     // Behavioral categories (for reference/validation)
