@@ -65,28 +65,33 @@ enum PersistenceController {
     static func makeContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
         
-        // TEMPORARY FIX: Use .none to disable CloudKit if having persistence issues
-        // Change back to .automatic once CloudKit is properly configured
-        let config = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .none   // Disabled CloudKit for now - change to .automatic when ready
-        )
-        
-        let container = try ModelContainer(
-            for: schema,
-            migrationPlan: CatalyzeMigrationPlan.self,
-            configurations: [config]
-        )
-        
-        // Enable verbose logging for debugging
-        #if DEBUG
-        print("📦 SwiftData container created")
-        print("   Store URL: \(config.url)")
-        print("   CloudKit: DISABLED (local persistence only)")
-        #endif
-        
-        return container
+        // Try with CloudKit first, fall back to local-only if it fails
+        do {
+            let config = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .automatic
+            )
+            
+            let container = try ModelContainer(
+                for: schema,
+                migrationPlan: CatalyzeMigrationPlan.self,
+                configurations: [config]
+            )
+            
+            #if DEBUG
+            Logger.log("SwiftData container created with CloudKit", level: .success)
+            Logger.log("Store URL: \(config.url)", level: .info)
+            #endif
+            
+            return container
+        } catch {
+            // CloudKit failed, try local-only
+            Logger.log("CloudKit initialization failed, using local-only storage", level: .warning)
+            Logger.error(error, context: "CloudKit initialization")
+            
+            return try makeLocalOnlyContainer()
+        }
     }
 
     /// In-memory container for previews and unit tests. No CloudKit.
@@ -120,8 +125,8 @@ enum PersistenceController {
             configurations: [config]
         )
         
-        print("📦 Local-only container created (CloudKit disabled)")
-        print("   Store URL: \(config.url)")
+        Logger.log("Local-only container created (CloudKit disabled)", level: .info)
+        Logger.log("Store URL: \(config.url)", level: .info)
         
         return container
     }

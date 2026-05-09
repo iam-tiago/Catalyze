@@ -12,7 +12,8 @@ import SwiftData
 
 @Model
 final class IDPAction {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var text: String = ""
     var done: Bool = false
     /// For deterministic ordering (CloudKit doesn't preserve array order
@@ -36,7 +37,8 @@ final class IDPAction {
 
 @Model
 final class DevelopmentPlan {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var memberId: String = ""
     var title: String = ""
     /// ID of a `StrengthWeakness` (only weaknesses / growth areas link here).
@@ -50,6 +52,7 @@ final class DevelopmentPlan {
     @Relationship(deleteRule: .cascade, inverse: \IDPAction.plan)
     var actions: [IDPAction]? = []
 
+    // CloudKit requires inverse relationship
     var member: TeamMember? = nil
 
     init(

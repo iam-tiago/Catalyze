@@ -10,7 +10,8 @@ import SwiftData
 
 @Model
 final class ProfileEvent {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var memberId: String = ""
     var typeRaw: String = ProfileEventType.strengthAdded.rawValue
     var category: String = ""
@@ -18,6 +19,7 @@ final class ProfileEvent {
     var intensityAfterRaw: String? = nil
     var createdAt: Date = Date()
 
+    // CloudKit requires inverse relationship
     var member: TeamMember? = nil
 
     init(

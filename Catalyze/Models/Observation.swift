@@ -12,13 +12,14 @@ import SwiftData
 
 @Model
 final class TeamObservation {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var memberId: String = ""
     var text: String = ""
     var contextRaw: String = ObservationContext.oneOnOne.rawValue
     var createdAt: Date = Date()
 
-    /// Inverse — back-reference to the owning member.
+    /// CloudKit requires inverse relationship
     var member: TeamMember? = nil
 
     init(

@@ -29,6 +29,8 @@ struct MemberForm: View {
     @State private var photoData: Data? = nil
     @State private var selectedMentorId: String? = nil
     @State private var externalMentorName = ""
+    @State private var showingError = false
+    @State private var errorMessage = ""
 
     @Query(sort: \TeamMember.name) private var allMembers: [TeamMember]
 
@@ -132,6 +134,11 @@ struct MemberForm: View {
             .onAppear {
                 loadInitialData()
             }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
 
@@ -142,8 +149,13 @@ struct MemberForm: View {
     }
 
     private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !role.trimmingCharacters(in: .whitespaces).isEmpty
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        let trimmedRole = role.trimmingCharacters(in: .whitespaces)
+        
+        return !trimmedName.isEmpty && 
+               trimmedName.count >= 2 &&
+               !trimmedRole.isEmpty &&
+               trimmedRole.count >= 2
     }
 
     private var availableMentors: [TeamMember] {
@@ -167,13 +179,39 @@ struct MemberForm: View {
     }
 
     private func saveMember() {
-        let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        let trimmedRole = role.trimmingCharacters(in: .whitespaces)
+        // Validate name
+        guard case .success(let validName) = Validator.validateName(name) else {
+            if case .failure(let error) = Validator.validateName(name) {
+                errorMessage = error.localizedDescription ?? "Invalid name"
+                showingError = true
+            }
+            return
+        }
+        
+        // Validate role
+        guard case .success(let validRole) = Validator.validateRole(role) else {
+            if case .failure(let error) = Validator.validateRole(role) {
+                errorMessage = error.localizedDescription ?? "Invalid role"
+                showingError = true
+            }
+            return
+        }
+        
+        // Validate photo URL if provided
+        if !photoUrl.isEmpty {
+            guard case .success = Validator.validateURL(photoUrl) else {
+                if case .failure(let error) = Validator.validateURL(photoUrl) {
+                    errorMessage = error.localizedDescription ?? "Invalid photo URL"
+                    showingError = true
+                }
+                return
+            }
+        }
 
         if let existing = memberToEdit {
             // Update existing
-            existing.name = trimmedName
-            existing.role = trimmedRole
+            existing.name = validName
+            existing.role = validRole
             existing.seniority = seniority
             existing.photoUrl = photoUrl.isEmpty ? nil : photoUrl
             existing.photoData = photoData
@@ -190,8 +228,8 @@ struct MemberForm: View {
         } else {
             // Create new
             let newMember = TeamMember(
-                name: trimmedName,
-                role: trimmedRole,
+                name: validName,
+                role: validRole,
                 seniority: seniority,
                 photoUrl: photoUrl.isEmpty ? nil : photoUrl
             )

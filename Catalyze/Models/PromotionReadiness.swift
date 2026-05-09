@@ -11,7 +11,8 @@ import SwiftData
 
 @Model
 final class PromotionCriterion {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var category: String = ""
     var label: String = ""
     var met: Bool = false
@@ -42,7 +43,8 @@ final class PromotionCriterion {
 
 @Model
 final class PromotionReadiness {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var memberId: String = ""
     var targetTierRaw: String = Seniority.t2_2.rawValue
     var statusRaw: String = PromotionStatus.notReady.rawValue
@@ -54,6 +56,7 @@ final class PromotionReadiness {
     @Relationship(deleteRule: .cascade, inverse: \PromotionCriterion.record)
     var criteria: [PromotionCriterion]? = []
 
+    // CloudKit requires inverse relationship
     var member: TeamMember? = nil
 
     init(
