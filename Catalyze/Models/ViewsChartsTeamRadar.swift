@@ -325,7 +325,7 @@ private struct TeamRadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 45
+                    let labelDistance = radius + 24
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
@@ -377,7 +377,7 @@ private struct TeamRadarChartView: View {
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
             // Bottom area
-            return CGSize(width: 0, height: 12)
+            return CGSize(width: 0, height: 6)
         } else if degrees >= 120 && degrees < 150 {
             // Bottom-left
             return CGSize(width: -12, height: 8)
@@ -386,7 +386,7 @@ private struct TeamRadarChartView: View {
             return CGSize(width: -15, height: 0)
         } else {
             // Top-left
-            return CGSize(width: -12, height: -8)
+            return CGSize(width: -1, height: -8)
         }
     }
 }
@@ -398,7 +398,7 @@ private struct TeamRadarChartView: View {
     let context = ModelContext(container)
     
     // Create sample team
-    let alice = TeamMember(name: "Alice", role: "iOS Engineer", seniority: .t3_1)
+    let alice = TeamMember(name: "Paulo", role: "iOS Engineer", seniority: .t3_1)
     let s1 = StrengthWeakness(kind: .strength, category: "Communication", intensity: .strong)
     s1.member = alice
     let s2 = StrengthWeakness(kind: .strength, category: "Leadership", intensity: .solid)
