@@ -303,7 +303,7 @@ struct SettingsView: View {
             isPresented: $showingExportActivity,
             document: exportFileURL != nil ? CatalyzeDocument(fileURL: exportFileURL!) : nil,
             contentType: .json,
-            defaultFilename: "Catalyze-Export-\(Date().formatted(date: .numeric, time: .omitted)).json"
+            defaultFilename: generateExportFilename()
         ) { result in
             switch result {
             case .success(let url):
@@ -318,7 +318,7 @@ struct SettingsView: View {
                     }
                 }
             case .failure(let error):
-                print("Export failed: \(error)")
+                Logger.error(error, context: "Export file dialog")
                 importErrorMessage = "Failed to export: \(error.localizedDescription)"
                 showingImportError = true
             }
@@ -343,6 +343,13 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers --------------------------------------------------------
+    
+    private func generateExportFilename() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        let dateString = formatter.string(from: Date())
+        return "Catalyze-Export-\(dateString).json"
+    }
 
     private func loadSettings() {
         // Load EM profile
@@ -604,12 +611,12 @@ struct SettingsView: View {
     // MARK: - Export/Import --------------------------------------------------
     
     private func exportData() {
-        print("🔵 Export data initiated")
+        Logger.log("Export data initiated", level: .info)
         do {
             // Fetch all team members
             let descriptor = FetchDescriptor<TeamMember>(sortBy: [SortDescriptor(\.name)])
             let members = try context.fetch(descriptor)
-            print("🔵 Fetched \(members.count) members")
+            Logger.log("Fetched \(members.count) members for export", level: .info)
             
             // Create exportable data structure
             let exportData = ExportData(
@@ -657,45 +664,84 @@ struct SettingsView: View {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(exportData)
-            print("🔵 JSON encoded: \(jsonData.count) bytes")
+            Logger.log("JSON encoded: \(jsonData.count) bytes", level: .success)
             
-            // Write to temporary file
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("catalyze-export.json")
+            // Write to temporary file with safe filename
+            let tempDir = FileManager.default.temporaryDirectory
+            let filename = generateExportFilename()
+            let tempURL = tempDir.appendingPathComponent(filename)
+            
+            // Remove old file if exists
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try FileManager.default.removeItem(at: tempURL)
+            }
+            
             try jsonData.write(to: tempURL)
-            print("🔵 File written to: \(tempURL.path)")
+            Logger.log("File written to: \(tempURL.path)", level: .success)
             
             exportFileURL = tempURL
-            print("🔵 Setting showingExportActivity = true")
             showingExportActivity = true
             
         } catch {
-            print("🔴 Export failed: \(error)")
-            importErrorMessage = "Failed to export data: \(error.localizedDescription)"
+            Logger.error(error, context: "Export data")
+            importErrorMessage = "Failed to export: \(error.localizedDescription)"
             showingImportError = true
         }
     }
     
     private func handleImport(result: Result<[URL], Error>) {
         do {
-            guard let selectedFile = try result.get().first else { return }
+            guard let selectedFile = try result.get().first else {
+                throw NSError(
+                    domain: "Catalyze",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "No file selected"]
+                )
+            }
+            
+            Logger.log("Starting import from: \(selectedFile.lastPathComponent)", level: .info)
             
             // Start accessing security-scoped resource
             guard selectedFile.startAccessingSecurityScopedResource() else {
-                throw NSError(domain: "Catalyze", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to access file"])
+                throw NSError(
+                    domain: "Catalyze",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Unable to access file. Please try selecting the file again."]
+                )
             }
             defer { selectedFile.stopAccessingSecurityScopedResource() }
             
             // Read and decode JSON
             let jsonData = try Data(contentsOf: selectedFile)
+            Logger.log("Read \(jsonData.count) bytes from file", level: .info)
+            
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let importData = try decoder.decode(ExportData.self, from: jsonData)
             
+            Logger.log("Decoded \(importData.members.count) members from export version \(importData.version)", level: .info)
+            
+            // Validate version compatibility
+            if importData.version != "1.0.0" {
+                Logger.log("Warning: Import version \(importData.version) may not be fully compatible", level: .warning)
+            }
+            
             // Import members
             var memberIdMap: [String: TeamMember] = [:]
+            var importedCount = 0
             
             for exportMember in importData.members {
+                // Check if member already exists
+                let checkDescriptor = FetchDescriptor<TeamMember>(
+                    predicate: #Predicate { $0.id == exportMember.id }
+                )
+                let existing = try context.fetch(checkDescriptor)
+                
+                if !existing.isEmpty {
+                    Logger.log("Skipping duplicate member: \(exportMember.name)", level: .warning)
+                    continue
+                }
+                
                 let member = TeamMember(
                     id: exportMember.id,
                     name: exportMember.name,
@@ -742,12 +788,14 @@ struct SettingsView: View {
                         context: ObservationContext(rawValue: obs.context) ?? .oneOnOne,
                         createdAt: obs.createdAt
                     )
+                    observation.member = member
                     context.insert(observation)
                     return observation
                 }
                 
                 context.insert(member)
                 memberIdMap[member.id] = member
+                importedCount += 1
             }
             
             // Set up mentor relationships (after all members are created)
@@ -762,15 +810,21 @@ struct SettingsView: View {
             // Import EM profile if included
             if let emProfile = importData.emProfile {
                 store.setEMProfile(emProfile)
+                Logger.log("EM Profile imported", level: .info)
             }
             
-            // Save context
+            // Save all changes
             try context.save()
+            Logger.log("Import successful: \(importedCount) members imported", level: .success)
             
             showingImportSuccess = true
             
+        } catch let decodingError as DecodingError {
+            Logger.error(decodingError, context: "Import - JSON decoding")
+            importErrorMessage = "Invalid file format. Please ensure you're importing a valid Catalyze export file."
+            showingImportError = true
         } catch {
-            print("Import failed: \(error)")
+            Logger.error(error, context: "Import")
             importErrorMessage = "Failed to import data: \(error.localizedDescription)"
             showingImportError = true
         }
