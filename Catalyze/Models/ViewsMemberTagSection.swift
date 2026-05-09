@@ -241,7 +241,7 @@ enum BehavioralCategory {
     static let behavioralCategories: [String] = [
         "Communication",
         "Ownership",
-        "Emotional Intelligence",
+        "EQ", // Emotional Intelligence / Emotional Quotient
         "Collaboration",
         "Growth Mindset",
         "Problem Solving",
