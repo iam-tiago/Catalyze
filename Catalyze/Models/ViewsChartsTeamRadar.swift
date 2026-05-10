@@ -383,10 +383,10 @@ private struct TeamRadarChartView: View {
             return CGSize(width: -12, height: 1)
         } else if degrees >= 150 || degrees < -150 {
             // Left side
-            return CGSize(width: -13, height: 0)
+            return CGSize(width: -11, height: 0)
         } else {
             // Top-left
-            return CGSize(width: -5, height: -8)
+            return CGSize(width: -0, height: -8)
         }
     }
 }
