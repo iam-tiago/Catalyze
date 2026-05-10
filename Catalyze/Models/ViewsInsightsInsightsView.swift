@@ -17,6 +17,7 @@ struct InsightsView: View {
     @Environment(\.modelContext) private var context
 
     @State private var selectedTab: InsightType = .individual
+    @State private var showingHistory = false
 
     var body: some View {
         Group {
@@ -46,6 +47,17 @@ struct InsightsView: View {
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 600)
             }
+            
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingHistory = true
+                } label: {
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                }
+            }
+        }
+        .sheet(isPresented: $showingHistory) {
+            InsightHistoryView()
         }
     }
 }
