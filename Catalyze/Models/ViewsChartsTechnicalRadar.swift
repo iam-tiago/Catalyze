@@ -348,7 +348,7 @@ private struct TechnicalRadarChartView: View {
         } else if degrees >= 150 || degrees < -150 {
             return CGSize(width: -15, height: 0)
         } else {
-            return CGSize(width: -12, height: -8)
+            return CGSize(width: -0, height: -8)
         }
     }
 }

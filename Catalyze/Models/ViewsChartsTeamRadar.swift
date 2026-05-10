@@ -377,7 +377,7 @@ private struct TeamRadarChartView: View {
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
             // Bottom area
-            return CGSize(width: 0, height: 6)
+            return CGSize(width: 0, height: 4)
         } else if degrees >= 120 && degrees < 150 {
             // Bottom-left
             return CGSize(width: -12, height: 1)
@@ -386,7 +386,7 @@ private struct TeamRadarChartView: View {
             return CGSize(width: -11, height: 0)
         } else {
             // Top-left
-            return CGSize(width: -0, height: -8)
+            return CGSize(width: -0, height: -4)
         }
     }
 }
