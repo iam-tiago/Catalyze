@@ -339,17 +339,17 @@ private struct RadarChartView: View {
         } else if degrees >= -60 && degrees < -30 {
             return CGSize(width: 12, height: -8)
         } else if degrees >= -30 && degrees < 30 {
-            return CGSize(width: 15, height: 0)
+            return CGSize(width: 1, height: 0)
         } else if degrees >= 30 && degrees < 60 {
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
-            return CGSize(width: 0, height: 12)
+            return CGSize(width: 0, height: 8)
         } else if degrees >= 120 && degrees < 150 {
             return CGSize(width: -12, height: 8)
         } else if degrees >= 150 || degrees < -150 {
-            return CGSize(width: -15, height: 0)
+            return CGSize(width: -18, height: 0)
         } else {
-            return CGSize(width: -12, height: -8)
+            return CGSize(width: -0, height: -8)
         }
     }
 }
