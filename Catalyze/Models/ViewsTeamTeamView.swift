@@ -45,7 +45,11 @@ struct TeamView: View {
             }
             .padding(.vertical, CSpace.x2l)
         }
-        .background(CColor.neutral50)
+        .background {
+            // Gradiente sutil de background
+            CGradient.pageBackground
+                .ignoresSafeArea()
+        }
         .navigationTitle(teamTitle)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -80,15 +84,27 @@ struct TeamView: View {
 
 private struct TeamMemberCard: View {
     let member: TeamMember
+    @State private var isHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: CSpace.md) {
             // Header: avatar + name + tier
             HStack(spacing: CSpace.md) {
-                // Avatar
+                // Avatar com borda colorida
                 avatarView
                     .frame(width: 56, height: 56)
                     .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.3)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    }
 
                 // Name + role
                 VStack(alignment: .leading, spacing: 2) {
@@ -130,10 +146,25 @@ private struct TeamMemberCard: View {
             }
         }
         .padding(CSpace.lg)
-        .background(CColor.neutral0)
-        .clipShape(RoundedRectangle(cornerRadius: CRadius.md))
+        .background {
+            // Background com gradiente sutil no hover
+            RoundedRectangle(cornerRadius: CRadius.md)
+                .fill(isHovered ? CGradient.cardHover : LinearGradient(colors: [CColor.neutral0], startPoint: .top, endPoint: .bottom))
+        }
+        .overlay {
+            // Borda sutil que aparece no hover
+            RoundedRectangle(cornerRadius: CRadius.md)
+                .strokeBorder(
+                    isHovered ? CColor.brandPrimary.opacity(0.3) : Color.clear,
+                    lineWidth: 1.5
+                )
+        }
         .cardShadow()
-        .hoverEffect(.lift)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 
     private var avatarView: some View {

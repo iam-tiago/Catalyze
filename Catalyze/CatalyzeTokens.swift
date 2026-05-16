@@ -147,6 +147,46 @@ enum CRadius {
     static let full: CGFloat = 999
 }
 
+// MARK: - Gradients
+
+/// Gradientes para backgrounds e destaques visuais.
+enum CGradient {
+    /// Gradiente sutil de background para páginas
+    static let pageBackground = LinearGradient(
+        colors: [CColor.neutral50, CColor.neutral100.opacity(0.3)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    /// Gradiente para cards hero/destaque
+    static let heroCard = LinearGradient(
+        colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.8)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    /// Gradiente sutil para cards com hover
+    static let cardHover = LinearGradient(
+        colors: [CColor.neutral0, CColor.brandPrimaryLight.opacity(0.2)],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+    
+    /// Gradiente para stats/métricas positivas
+    static let success = LinearGradient(
+        colors: [CColor.strengthLight, CColor.strength.opacity(0.1)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    /// Gradiente para growth/warning
+    static let growth = LinearGradient(
+        colors: [CColor.growthLight, CColor.growth.opacity(0.1)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+}
+
 // MARK: - Shadows
 
 /// Tokens de sombra para elevação de elementos.
@@ -163,6 +203,11 @@ extension View {
     /// Sombra mais pronunciada para modais e dropdowns.
     func elevatedShadow() -> some View {
         self.shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 4)
+    }
+    
+    /// Sombra forte para elementos em destaque
+    func strongShadow() -> some View {
+        self.shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 8)
     }
 }
 
