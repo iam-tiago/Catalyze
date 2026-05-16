@@ -1,26 +1,24 @@
 //
-//  TeamRadar.swift
+//  TeamTechnicalRadar.swift
 //  Catalyze
 //
-//  Aggregated behavioral radar chart for the entire team. Shows average
-//  intensity across behavioral categories, giving a team-level view of
-//  strengths and growth areas.
-//
-//  Equivalent to `src/components/Charts/TeamRadar.tsx` in the web app.
+//  Aggregated technical radar chart for the entire team. Shows average
+//  proficiency across technical skill categories, giving a team-level view
+//  of technical strengths and growth areas.
 //
 
 import SwiftUI
 import SwiftData
 import Charts
 
-struct TeamRadar: View {
+struct TeamTechnicalRadar: View {
     @Query(sort: \TeamMember.name) private var members: [TeamMember]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
             VStack(alignment: .leading, spacing: 4) {
-                Text("Team Behavioral Profile")
+                Text("Team Technical Profile")
                     .font(.headline)
                 
                 Text("Aggregated across \(members.count) members")
@@ -32,7 +30,7 @@ struct TeamRadar: View {
             if members.isEmpty {
                 // Empty state
                 VStack(spacing: 12) {
-                    Image(systemName: "chart.xyaxis.line")
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
                         .font(.largeTitle)
                         .foregroundStyle(.tertiary)
                     
@@ -40,7 +38,25 @@ struct TeamRadar: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
-                    Text("Add team members with strengths and growth areas")
+                    Text("Add team members with technical skills")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
+            } else if !hasTechnicalData {
+                // No technical data state
+                VStack(spacing: 12) {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.largeTitle)
+                        .foregroundStyle(.tertiary)
+                    
+                    Text("No technical skills data")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Add technical strengths and growth areas to team members")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -48,14 +64,14 @@ struct TeamRadar: View {
                 .frame(height: 200)
                 .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
             } else {
-                TeamRadarChartView(data: radarData)
+                TeamTechnicalRadarChartView(data: radarData)
                     .frame(height: 350)
                     .padding()
                     .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
             }
             
             // Stats
-            if !members.isEmpty {
+            if hasTechnicalData {
                 HStack(spacing: 24) {
                     StatBox(
                         label: "Strongest",
@@ -75,17 +91,17 @@ struct TeamRadar: View {
     
     // MARK: - Helpers --------------------------------------------------------
     
-    private var radarData: [TeamRadarDataPoint] {
-        // Fixed behavioral categories - always shown in this order
-        let behavioralCategories = [
-            "Communication",
-            "Ownership",
-            "EQ",
-            "Collaboration",
-            "Growth Mindset",
-            "Leadership",
-            "Adaptability",
-            "Mentoring"
+    private var radarData: [TeamTechRadarDataPoint] {
+        // Fixed technical categories - always shown in this order
+        let technicalCategories = [
+            "Code Quality",
+            "Code Review",
+            "Testing",
+            "Architecture",
+            "DevOps",
+            "Infrastructure",
+            "Debugging",
+            "Observability"
         ]
         
         // Calculate totals for each category, tracking strengths and weaknesses separately
@@ -93,7 +109,7 @@ struct TeamRadar: View {
         
         for member in members {
             for tag in member.strengths + member.weaknesses {
-                guard behavioralCategories.contains(tag.category) else { continue }
+                guard technicalCategories.contains(tag.category) else { continue }
                 
                 let value = intensityToValue(tag.intensity, isStrength: tag.kind == .strength)
                 let isStrength = tag.kind == .strength
@@ -118,7 +134,7 @@ struct TeamRadar: View {
         }
         
         // Build radar data with ALL categories (fixed order, 0 if no data)
-        return behavioralCategories.map { category in
+        return technicalCategories.map { category in
             let data = categoryData[category]
             let strengthAvg = data.map { $0.strengthCount > 0 ? $0.strengthSum / Double($0.strengthCount) : 0.0 } ?? 0.0
             let weaknessAvg = data.map { $0.weaknessCount > 0 ? $0.weaknessSum / Double($0.weaknessCount) : 0.0 } ?? 0.0
@@ -142,16 +158,22 @@ struct TeamRadar: View {
                 isStrengthDominant = false
             }
             
-            return TeamRadarDataPoint(category: category, value: value, isStrength: isStrengthDominant, hasData: hasStrength || hasWeakness)
+            return TeamTechRadarDataPoint(category: category, value: value, isStrength: isStrengthDominant, hasData: hasStrength || hasWeakness)
         }
     }
     
+    private var hasTechnicalData: Bool {
+        radarData.contains { $0.value > 0 }
+    }
+    
     private var strongestCategory: String {
-        radarData.max(by: { $0.value < $1.value })?.category ?? "—"
+        let nonZeroData = radarData.filter { $0.value > 0 }
+        return nonZeroData.max(by: { $0.value < $1.value })?.category ?? "—"
     }
     
     private var weakestCategory: String {
-        radarData.min(by: { $0.value < $1.value })?.category ?? "—"
+        let nonZeroData = radarData.filter { $0.value > 0 }
+        return nonZeroData.min(by: { $0.value < $1.value })?.category ?? "—"
     }
     
     private func intensityToValue(_ intensity: Intensity, isStrength: Bool) -> Double {
@@ -171,21 +193,11 @@ struct TeamRadar: View {
             }
         }
     }
-    
-    private func intensityLabel(_ level: Int) -> String {
-        switch level {
-        case 0: return "None"
-        case 1: return "Emerging"
-        case 2: return "Solid"
-        case 3: return "Strong"
-        default: return ""
-        }
-    }
 }
 
-// MARK: - Team Radar Data Point ----------------------------------------------
+// MARK: - Team Tech Radar Data Point -----------------------------------------
 
-private struct TeamRadarDataPoint: Identifiable {
+private struct TeamTechRadarDataPoint: Identifiable {
     let id = UUID()
     let category: String
     let value: Double
@@ -224,10 +236,10 @@ private struct StatBox: View {
     }
 }
 
-// MARK: - Team Radar Chart View ----------------------------------------------
+// MARK: - Team Technical Radar Chart View ------------------------------------
 
-private struct TeamRadarChartView: View {
-    let data: [TeamRadarDataPoint]
+private struct TeamTechnicalRadarChartView: View {
+    let data: [TeamTechRadarDataPoint]
     let maxValue: Double = 3.0
     
     var body: some View {
@@ -325,7 +337,7 @@ private struct TeamRadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 24
+                    let labelDistance = radius + 27
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
@@ -336,7 +348,6 @@ private struct TeamRadarChartView: View {
                         .multilineTextAlignment(.center)
                         .frame(width: 100)
                         .position(coordinate)
-                        .offset(labelOffset(for: angle))
                         .offset(labelOffset(for: angle))
                 }
             }
@@ -358,35 +369,25 @@ private struct TeamRadarChartView: View {
     }
     
     private func labelOffset(for angle: Double) -> CGSize {
-        // Adjust label position based on angle to avoid overlap with radar
         let normalizedAngle = angle.truncatingRemainder(dividingBy: 2 * .pi)
         let degrees = normalizedAngle * 180 / .pi
         
-        // Push labels further out based on their position
         if degrees > -90 && degrees < -60 {
-            // Top area
             return CGSize(width: 0, height: -12)
         } else if degrees >= -60 && degrees < -30 {
-            // Top-right
             return CGSize(width: 12, height: -8)
         } else if degrees >= -30 && degrees < 30 {
-            // Right side
-            return CGSize(width: 5, height: 0)
+            return CGSize(width: 15, height: 0)
         } else if degrees >= 30 && degrees < 60 {
-            // Bottom-right
             return CGSize(width: 12, height: 8)
         } else if degrees >= 60 && degrees < 120 {
-            // Bottom area
-            return CGSize(width: 0, height: 4)
+            return CGSize(width: 0, height: 12)
         } else if degrees >= 120 && degrees < 150 {
-            // Bottom-left
-            return CGSize(width: -12, height: 1)
+            return CGSize(width: -12, height: 8)
         } else if degrees >= 150 || degrees < -150 {
-            // Left side
-            return CGSize(width: -11, height: 0)
+            return CGSize(width: -15, height: 0)
         } else {
-            // Top-left
-            return CGSize(width: -0, height: -4)
+            return CGSize(width: -0, height: -8)
         }
     }
 }
@@ -397,23 +398,23 @@ private struct TeamRadarChartView: View {
     let container = try! PersistenceController.makePreviewContainer()
     let context = ModelContext(container)
     
-    // Create sample team
-    let alice = TeamMember(name: "Paulo", role: "iOS Engineer", seniority: .t3_1)
-    let s1 = StrengthWeakness(kind: .strength, category: "Communication", intensity: .strong)
+    // Create sample team with technical skills
+    let alice = TeamMember(name: "Alice", role: "iOS Engineer", seniority: .t3_1)
+    let s1 = StrengthWeakness(kind: .strength, category: "Language Mastery", intensity: .strong)
     s1.member = alice
-    let s2 = StrengthWeakness(kind: .strength, category: "Leadership", intensity: .solid)
+    let s2 = StrengthWeakness(kind: .strength, category: "Code Quality", intensity: .solid)
     s2.member = alice
     alice.tags = [s1, s2]
     
     let bob = TeamMember(name: "Bob", role: "Backend Engineer", seniority: .t2_2)
-    let s3 = StrengthWeakness(kind: .strength, category: "Ownership", intensity: .strong)
+    let s3 = StrengthWeakness(kind: .strength, category: "Testing", intensity: .strong)
     s3.member = bob
-    let w1 = StrengthWeakness(kind: .weakness, category: "Communication", intensity: .developing)
+    let w1 = StrengthWeakness(kind: .weakness, category: "DevOps", intensity: .developing)
     w1.member = bob
     bob.tags = [s3, w1]
     
     let carol = TeamMember(name: "Carol", role: "Full Stack", seniority: .t2_1)
-    let s4 = StrengthWeakness(kind: .strength, category: "Collaboration", intensity: .solid)
+    let s4 = StrengthWeakness(kind: .strength, category: "Architecture", intensity: .solid)
     s4.member = carol
     carol.tags = [s4]
     
@@ -423,7 +424,7 @@ private struct TeamRadarChartView: View {
     try? context.save()
     
     return ScrollView {
-        TeamRadar()
+        TeamTechnicalRadar()
             .padding()
     }
     .modelContainer(container)

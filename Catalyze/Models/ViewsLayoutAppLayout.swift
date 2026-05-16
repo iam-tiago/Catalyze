@@ -91,7 +91,7 @@ private struct Sidebar: View {
 
             Divider()
 
-            // EM Profile card at the bottom
+            // Quick access to EM profile (opens Settings)
             EMProfileCard()
                 .padding()
         }

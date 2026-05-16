@@ -6,7 +6,7 @@
 //  Tapping a card navigates to the member detail. "+" button opens the
 //  add/edit member form.
 //
-//  Equivalent to `src/components/TeamMembers/TeamView.tsx` in the web app.
+//  ✨ Migrated to Catalyze Design System v1.0
 //
 
 import SwiftUI
@@ -22,28 +22,33 @@ struct TeamView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: CSpace.x3l) {
                 // Team overview (only show when team is not empty)
                 if !members.isEmpty {
                     TeamOverview()
-                        .padding(.horizontal)
+                        .padding(.horizontal, CSpace.x2l)
                 }
 
                 // Member grid
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 280), spacing: 16)],
-                    spacing: 16
+                    columns: [GridItem(.adaptive(minimum: 280), spacing: CSpace.lg)],
+                    spacing: CSpace.lg
                 ) {
                     ForEach(members) { member in
-                        MemberCard(member: member)
+                        TeamMemberCard(member: member)
                             .onTapGesture {
                                 store.setSelectedMember(member.id)
                             }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, CSpace.x2l)
             }
-            .padding(.vertical)
+            .padding(.vertical, CSpace.x2l)
+        }
+        .background {
+            // Gradiente sutil de background
+            CGradient.pageBackground
+                .ignoresSafeArea()
         }
         .navigationTitle(teamTitle)
         .toolbar {
@@ -74,143 +79,147 @@ struct TeamView: View {
     }
 }
 
-// MARK: - Member Card --------------------------------------------------------
+// MARK: - Team Member Card --------------------------------------------------
+// Using Catalyze Design System v1.0
 
-private struct MemberCard: View {
+private struct TeamMemberCard: View {
     let member: TeamMember
+    @State private var isHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header: avatar + name + seniority
-            HStack(spacing: 12) {
-                // Avatar
-                Group {
-                    if let avatarImage = member.avatarImage {
-                        avatarImage
-                            .resizable()
-                            .scaledToFill()
-                    } else if let urlString = member.photoUrl,
-                              let url = URL(string: urlString) {
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
-                            placeholderAvatar
-                        }
-                    } else {
-                        placeholderAvatar
+        VStack(alignment: .leading, spacing: CSpace.md) {
+            // Header: avatar + name + tier
+            HStack(spacing: CSpace.md) {
+                // Avatar com borda colorida
+                avatarView
+                    .frame(width: 56, height: 56)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.3)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
                     }
-                }
-                .frame(width: 56, height: 56)
-                .clipShape(Circle())
 
                 // Name + role
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.name)
-                        .font(.headline)
+                        .font(CFont.headline)
+                        .foregroundStyle(CColor.neutral900)
                         .lineLimit(1)
 
                     Text(member.role)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(CFont.subheadline)
+                        .foregroundStyle(CColor.neutral600)
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
 
-                // Seniority chip
-                Text(member.seniority.label)
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.tint.opacity(0.15), in: Capsule())
-                    .foregroundStyle(.tint)
+                // Tier badge
+                TierBadge(tier: member.seniority.label)
             }
 
             // Top 2 strengths
-            if !member.strengths.isEmpty {
+            if !topStrengths.isEmpty {
                 Divider()
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Top Strengths")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
+                VStack(alignment: .leading, spacing: CSpace.sm) {
+                    Text("TOP STRENGTHS")
+                        .font(CFont.caption2)
+                        .foregroundStyle(CColor.neutral400)
 
-                    FlowLayout(spacing: 6) {
+                    FlowLayout(spacing: CSpace.sm) {
                         ForEach(topStrengths, id: \.id) { strength in
-                            StrengthChip(strength: strength)
+                            SkillChip(
+                                name: strength.category,
+                                intensity: mapIntensity(strength.intensity)
+                            )
                         }
                     }
                 }
             }
         }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .hoverEffect(.lift)
+        .padding(CSpace.lg)
+        .background {
+            // Background com gradiente sutil no hover
+            RoundedRectangle(cornerRadius: CRadius.md)
+                .fill(isHovered ? CGradient.cardHover : LinearGradient(colors: [CColor.neutral0], startPoint: .top, endPoint: .bottom))
+        }
+        .overlay {
+            // Borda sutil que aparece no hover
+            RoundedRectangle(cornerRadius: CRadius.md)
+                .strokeBorder(
+                    isHovered ? CColor.brandPrimary.opacity(0.3) : Color.clear,
+                    lineWidth: 1.5
+                )
+        }
+        .cardShadow()
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var avatarView: some View {
+        Group {
+            if let avatarImage = member.avatarImage {
+                avatarImage
+                    .resizable()
+                    .scaledToFill()
+            } else if let urlString = member.photoUrl,
+                      let url = URL(string: urlString) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    placeholderAvatar
+                }
+            } else {
+                placeholderAvatar
+            }
+        }
     }
 
     private var placeholderAvatar: some View {
-        Image(systemName: "person.crop.circle.fill")
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(.tint.opacity(0.5))
+        ZStack {
+            Circle()
+                .fill(CColor.brandPrimaryLight)
+            Image(systemName: "person.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(CColor.brandPrimary)
+        }
     }
 
     private var topStrengths: [StrengthWeakness] {
         Array(member.strengths.prefix(2))
     }
-}
-
-// MARK: - Strength Chip ------------------------------------------------------
-
-private struct StrengthChip: View {
-    let strength: StrengthWeakness
-
-    var body: some View {
-        HStack(spacing: 4) {
-            // Intensity indicator (dots)
-            HStack(spacing: 2) {
-                ForEach(0..<intensityDotCount, id: \.self) { _ in
-                    Circle()
-                        .fill(.green)
-                        .frame(width: 4, height: 4)
-                }
-            }
-
-            Text(strength.category)
-                .font(.caption)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.green.opacity(0.1), in: Capsule())
-        .foregroundStyle(.green)
-    }
-
-    private var intensityDotCount: Int {
-        switch strength.intensity {
-        case .emerging:   return 1
-        case .solid:      return 2
-        case .strong:     return 3
-        default:          return 1
+    
+    private func mapIntensity(_ intensity: Intensity) -> SkillIntensity {
+        switch intensity {
+        case .emerging: return .emerging
+        case .solid: return .solid
+        case .strong: return .strong
+        case .developing, .blocking: return .emerging // Weaknesses map to emerging
         }
     }
 }
 
 // MARK: - Flow Layout --------------------------------------------------------
-//
-// Simple flow layout for chips. In iOS 16+ we'd use `Layout` protocol,
-// but for broader compatibility we use a simple HStack + wrapping logic.
-// This is a simplified version — just wraps horizontally.
+// Simple flow layout for chips
 
 private struct FlowLayout<Content: View>: View {
     let spacing: CGFloat
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        // For now, use HStack — a proper flow layout would calculate
-        // available width and wrap. This is good enough for top 2 tags.
         HStack(spacing: spacing) {
             content()
         }
@@ -218,36 +227,19 @@ private struct FlowLayout<Content: View>: View {
 }
 
 // MARK: - Empty State --------------------------------------------------------
+// Using Catalyze Design System v1.0
 
 private struct EmptyTeamView: View {
     let onAddMember: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "person.3.sequence")
-                .font(.system(size: 64))
-                .foregroundStyle(.tertiary)
-
-            VStack(spacing: 8) {
-                Text("No Team Members Yet")
-                    .font(.title2.bold())
-
-                Text("Add your first team member to get started")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button {
-                onAddMember()
-            } label: {
-                Label("Add Team Member", systemImage: "plus")
-                    .font(.headline)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-        }
-        .frame(maxWidth: 400)
-        .padding()
+        EmptyState(
+            icon: "person.3.sequence",
+            message: "Add your first team member to get started",
+            actionTitle: "Add Team Member",
+            actionIcon: "plus",
+            onAction: onAddMember
+        )
     }
 }
 

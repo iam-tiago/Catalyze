@@ -55,7 +55,7 @@ struct CatalystInsightLayout<InputContent: View>: View {
                     if !streamingText.isEmpty {
                         CatalystCard {
                             VStack(alignment: .leading, spacing: CatalystSpacing.lg) {
-                                CatalystCardHeader("AI Response", icon: "sparkles") {
+                                CatalystCardHeader("Manager Assistant Insight", icon: "sparkles") {
                                     if isGenerating {
                                         CatalystLoadingIndicator()
                                     }
@@ -121,7 +121,7 @@ struct CatalystSimpleInsightLayout<InputContent: View>: View {
                 if !streamingText.isEmpty {
                     CatalystCard {
                         VStack(alignment: .leading, spacing: CatalystSpacing.lg) {
-                            CatalystCardHeader("AI Response", icon: "sparkles") {
+                            CatalystCardHeader("Manager Assistant Insight", icon: "sparkles") {
                                 if isGenerating {
                                     CatalystLoadingIndicator()
                                 }

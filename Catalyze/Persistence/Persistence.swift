@@ -64,16 +64,34 @@ enum PersistenceController {
     /// directory and syncs via CloudKit.
     static func makeContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
-        let config = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic   // uses container ID from entitlements
-        )
-        return try ModelContainer(
-            for: schema,
-            migrationPlan: CatalyzeMigrationPlan.self,
-            configurations: [config]
-        )
+        
+        // Try with CloudKit first, fall back to local-only if it fails
+        do {
+            let config = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .automatic
+            )
+            
+            let container = try ModelContainer(
+                for: schema,
+                migrationPlan: CatalyzeMigrationPlan.self,
+                configurations: [config]
+            )
+            
+            #if DEBUG
+            Logger.log("SwiftData container created with CloudKit", level: .success)
+            Logger.log("Store URL: \(config.url)", level: .info)
+            #endif
+            
+            return container
+        } catch {
+            // CloudKit failed, try local-only
+            Logger.log("CloudKit initialization failed, using local-only storage", level: .warning)
+            Logger.error(error, context: "CloudKit initialization")
+            
+            return try makeLocalOnlyContainer()
+        }
     }
 
     /// In-memory container for previews and unit tests. No CloudKit.
@@ -89,5 +107,27 @@ enum PersistenceController {
             migrationPlan: CatalyzeMigrationPlan.self,
             configurations: [config]
         )
+    }
+    
+    /// Debug container - persists locally but WITHOUT CloudKit sync
+    /// Use this if CloudKit is causing issues during development
+    static func makeLocalOnlyContainer() throws -> ModelContainer {
+        let schema = Schema(versionedSchema: CatalyzeSchemaV1.self)
+        let config = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none  // Disabled CloudKit
+        )
+        
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: CatalyzeMigrationPlan.self,
+            configurations: [config]
+        )
+        
+        Logger.log("Local-only container created (CloudKit disabled)", level: .info)
+        Logger.log("Store URL: \(config.url)", level: .info)
+        
+        return container
     }
 }

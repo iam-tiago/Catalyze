@@ -3,7 +3,7 @@
 //  Catalyze
 //
 //  Behavioral radar chart for a single team member. Shows intensity across
-//  behavioral categories (Communication, Leadership, Problem Solving, etc.)
+//  behavioral categories (Communication, Leadership, EQ, etc.)
 //  using Swift Charts with polar coordinates.
 //
 //  Equivalent to `src/components/Charts/MemberRadar.tsx` in the web app.
@@ -30,7 +30,7 @@ struct MemberRadar: View {
             
             // Chart
             if hasBehavioralData {
-                RadarChartView(data: radarData, color: .blue)
+                RadarChartView(data: radarData)
                     .frame(height: 300)
                     .padding()
                     .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
@@ -56,24 +56,20 @@ struct MemberRadar: View {
             
             // Legend
             if hasBehavioralData {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Scale")
-                        .font(.caption.weight(.semibold))
+                HStack(spacing: 16) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+                    Text("Strength")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                     
-                    HStack(spacing: 16) {
-                        ForEach(0..<4) { level in
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(.blue)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(intensityLabel(level))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 8, height: 8)
+                    Text("Growth Area")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -87,42 +83,67 @@ struct MemberRadar: View {
         let behavioralCategories = [
             "Communication",
             "Ownership",
-            "Emotional Intelligence",
+            "EQ",
             "Collaboration",
             "Growth Mindset",
-            "Problem Solving",
             "Leadership",
             "Adaptability",
             "Mentoring"
         ]
         
-        // Calculate totals for each category
-        var categoryTotals: [String: (sum: Double, count: Int)] = [:]
+        // Calculate totals for each category, tracking strengths and weaknesses separately
+        var categoryData: [String: (strengthSum: Double, strengthCount: Int, weaknessSum: Double, weaknessCount: Int)] = [:]
         
         for tag in member.strengths + member.weaknesses {
             guard behavioralCategories.contains(tag.category) else { continue }
             
             let value = intensityToValue(tag.intensity, isStrength: tag.kind == .strength)
+            let isStrength = tag.kind == .strength
             
-            if var existing = categoryTotals[tag.category] {
-                existing.sum += value
-                existing.count += 1
-                categoryTotals[tag.category] = existing
+            if var existing = categoryData[tag.category] {
+                if isStrength {
+                    existing.strengthSum += value
+                    existing.strengthCount += 1
+                } else {
+                    existing.weaknessSum += value
+                    existing.weaknessCount += 1
+                }
+                categoryData[tag.category] = existing
             } else {
-                categoryTotals[tag.category] = (value, 1)
+                if isStrength {
+                    categoryData[tag.category] = (value, 1, 0, 0)
+                } else {
+                    categoryData[tag.category] = (0, 0, value, 1)
+                }
             }
         }
         
         // Build radar data with ALL categories (fixed order, 0 if no data)
         return behavioralCategories.map { category in
+            let data = categoryData[category]
+            let strengthAvg = data.map { $0.strengthCount > 0 ? $0.strengthSum / Double($0.strengthCount) : 0.0 } ?? 0.0
+            let weaknessAvg = data.map { $0.weaknessCount > 0 ? $0.weaknessSum / Double($0.weaknessCount) : 0.0 } ?? 0.0
+            
+            // Use the max value from either strengths or weaknesses, but track which type
+            let hasStrength = (data?.strengthCount ?? 0) > 0
+            let hasWeakness = (data?.weaknessCount ?? 0) > 0
+            
             let value: Double
-            if let totals = categoryTotals[category] {
-                value = totals.sum / Double(totals.count)
+            let isStrengthDominant: Bool
+            
+            if hasStrength && hasWeakness {
+                // Both exist, use average
+                value = (strengthAvg + weaknessAvg) / 2
+                isStrengthDominant = strengthAvg >= weaknessAvg
+            } else if hasStrength {
+                value = strengthAvg
+                isStrengthDominant = true
             } else {
-                value = 0.0
+                value = weaknessAvg
+                isStrengthDominant = false
             }
             
-            return RadarDataPoint(category: category, value: value)
+            return RadarDataPoint(category: category, value: value, isStrength: isStrengthDominant, hasData: hasStrength || hasWeakness)
         }
     }
     
@@ -166,13 +187,21 @@ private struct RadarDataPoint: Identifiable {
     let id = UUID()
     let category: String
     let value: Double
+    let isStrength: Bool
+    let hasData: Bool
+    
+    init(category: String, value: Double, isStrength: Bool = true, hasData: Bool = true) {
+        self.category = category
+        self.value = value
+        self.isStrength = isStrength
+        self.hasData = hasData
+    }
 }
 
 // MARK: - Radar Chart View ---------------------------------------------------
 
 private struct RadarChartView: View {
     let data: [RadarDataPoint]
-    let color: Color
     let maxValue: Double = 3.0
     
     var body: some View {
@@ -188,16 +217,6 @@ private struct RadarChartView: View {
                         .frame(width: radius * 2 * scale, height: radius * 2 * scale)
                 }
                 
-                // Grid value labels
-                ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { scale in
-                    let value = maxValue * scale
-                    let labelRadius = radius * scale
-                    Text(String(format: "%.1f", value))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .position(x: center.x + 5, y: center.y - labelRadius - 5)
-                }
-                
                 // Axes (spokes)
                 ForEach(0..<data.count, id: \.self) { index in
                     let angle = angleForIndex(index)
@@ -210,7 +229,7 @@ private struct RadarChartView: View {
                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                 }
                 
-                // Data area (filled polygon)
+                // Data area (filled polygon with gradient)
                 Path { path in
                     for (index, point) in data.enumerated() {
                         let angle = angleForIndex(index)
@@ -225,34 +244,49 @@ private struct RadarChartView: View {
                     }
                     path.closeSubpath()
                 }
-                .fill(color.opacity(0.2))
+                .fill(
+                    LinearGradient(
+                        colors: [.green.opacity(0.2), .orange.opacity(0.2)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 
-                // Data line (outline)
-                Path { path in
-                    for (index, point) in data.enumerated() {
-                        let angle = angleForIndex(index)
-                        let distance = radius * (point.value / maxValue)
-                        let coordinate = pointOnCircle(center: center, radius: distance, angle: angle)
-                        
-                        if index == 0 {
-                            path.move(to: coordinate)
-                        } else {
-                            path.addLine(to: coordinate)
-                        }
+                // Data line segments (colored by point type)
+                ForEach(0..<data.count, id: \.self) { index in
+                    let point = data[index]
+                    let nextIndex = (index + 1) % data.count
+                    let nextPoint = data[nextIndex]
+                    
+                    let angle1 = angleForIndex(index)
+                    let distance1 = radius * (point.value / maxValue)
+                    let coord1 = pointOnCircle(center: center, radius: distance1, angle: angle1)
+                    
+                    let angle2 = angleForIndex(nextIndex)
+                    let distance2 = radius * (nextPoint.value / maxValue)
+                    let coord2 = pointOnCircle(center: center, radius: distance2, angle: angle2)
+                    
+                    Path { path in
+                        path.move(to: coord1)
+                        path.addLine(to: coord2)
                     }
-                    path.closeSubpath()
+                    .stroke(
+                        point.hasData ? (point.isStrength ? Color.green : Color.orange) : Color.gray,
+                        lineWidth: 2.5
+                    )
                 }
-                .stroke(color, lineWidth: 2.5)
                 
-                // Data points
+                // Data points (colored by type)
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
                     let distance = radius * (point.value / maxValue)
                     let coordinate = pointOnCircle(center: center, radius: distance, angle: angle)
                     
+                    let pointColor = point.hasData ? (point.isStrength ? Color.green : Color.orange) : Color.gray
+                    
                     Circle()
-                        .fill(color)
+                        .fill(pointColor)
                         .frame(width: 10, height: 10)
                         .overlay {
                             Circle()
@@ -265,16 +299,18 @@ private struct RadarChartView: View {
                 ForEach(0..<data.count, id: \.self) { index in
                     let point = data[index]
                     let angle = angleForIndex(index)
-                    let labelDistance = radius + 30
+                    let labelDistance = radius + 27
                     let coordinate = pointOnCircle(center: center, radius: labelDistance, angle: angle)
                     
                     Text(point.category)
                         .font(.caption)
                         .fontWeight(.medium)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .multilineTextAlignment(.center)
-                        .frame(width: 80)
+                        .frame(width: 100)
                         .position(coordinate)
+                        .offset(labelOffset(for: angle))
                 }
             }
         }
@@ -292,6 +328,29 @@ private struct RadarChartView: View {
             x: center.x + radius * cos(angle),
             y: center.y + radius * sin(angle)
         )
+    }
+    
+    private func labelOffset(for angle: Double) -> CGSize {
+        let normalizedAngle = angle.truncatingRemainder(dividingBy: 2 * .pi)
+        let degrees = normalizedAngle * 180 / .pi
+        
+        if degrees > -90 && degrees < -60 {
+            return CGSize(width: 0, height: -12)
+        } else if degrees >= -60 && degrees < -30 {
+            return CGSize(width: 12, height: -8)
+        } else if degrees >= -30 && degrees < 30 {
+            return CGSize(width: 1, height: 0)
+        } else if degrees >= 30 && degrees < 60 {
+            return CGSize(width: 12, height: 8)
+        } else if degrees >= 60 && degrees < 120 {
+            return CGSize(width: 0, height: 8)
+        } else if degrees >= 120 && degrees < 150 {
+            return CGSize(width: -12, height: 8)
+        } else if degrees >= 150 || degrees < -150 {
+            return CGSize(width: -18, height: 0)
+        } else {
+            return CGSize(width: -0, height: -8)
+        }
     }
 }
 
@@ -314,7 +373,7 @@ private struct RadarChartView: View {
         let s2 = StrengthWeakness(kind: .strength, category: "Leadership", intensity: .solid)
         s2.member = member
         
-        let s3 = StrengthWeakness(kind: .strength, category: "Problem Solving", intensity: .solid)
+        let s3 = StrengthWeakness(kind: .strength, category: "EQ", intensity: .solid)
         s3.member = member
         
         let w1 = StrengthWeakness(kind: .weakness, category: "Mentoring", intensity: .emerging)

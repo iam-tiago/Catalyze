@@ -75,16 +75,19 @@ private struct MemberDetailContent: View {
 
                 // Sections
                 VStack(spacing: 16) {
+                    // 1. Strengths & Growth Areas → Behavioral Profile radar
                     TagSection(member: member)
-                    
-                    // Behavioral radar chart (right after strengths/weaknesses)
                     MemberRadar(member: member)
                     
-                    TechnicalStackSection(member: member)
-                    
-                    // Technical radar chart (right after technical stack)
+                    // 2. Tech Skills → Tech Skills radar
+                    TechSkillsSection(member: member)
                     TechnicalRadar(member: member)
                     
+                    // 3. Tech Stack → distribution bars (for now, just list)
+                    TechnicalStackSection(member: member)
+                    TechStackDistribution(member: member)
+                    
+                    // Other sections
                     ObservationSection(member: member)
                     IDPSection(member: member)
                     PromotionReadinessSection(member: member)

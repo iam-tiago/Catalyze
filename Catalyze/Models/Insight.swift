@@ -10,7 +10,8 @@ import SwiftData
 
 @Model
 final class Insight {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var typeRaw: String = InsightType.individual.rawValue
     var memberId: String? = nil
     var prompt: String = ""

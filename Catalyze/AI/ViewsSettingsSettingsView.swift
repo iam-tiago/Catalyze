@@ -5,7 +5,8 @@
 //  Settings view for configuring the EM profile, API credentials, and
 //  app preferences. Also includes import/export functionality.
 //
-//  Equivalent to `src/components/Settings/SettingsView.tsx` in the web app.
+//  ✨ Lightly adapted to Catalyze Design System v1.0
+//  (Form keeps native styling, only confirmations and colors updated)
 //
 
 import SwiftUI
@@ -42,6 +43,15 @@ struct SettingsView: View {
     
     // Team management
     @State private var showingTeamManagement = false
+    
+    // Export/Import
+    @State private var showingExportActivity = false
+    @State private var exportFileURL: URL?
+    @State private var showingImportPicker = false
+    @State private var showingImportSuccess = false
+    @State private var showingImportError = false
+    @State private var importErrorMessage = ""
+    @State private var showingExportSuccess = false
 
     var body: some View {
         Form {
@@ -120,12 +130,12 @@ struct SettingsView: View {
                 
                 // Confirmation message
                 if showProfileSaved {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Profile saved successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -172,12 +182,12 @@ struct SettingsView: View {
                 
                 // Confirmation message
                 if showCredentialsSaved {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Credentials saved successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -202,12 +212,12 @@ struct SettingsView: View {
                 }
                 
                 if showingSampleDataSuccess {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Sample data loaded successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -219,14 +229,39 @@ struct SettingsView: View {
                     Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
                 }
                 
+                // Cleanup Problem Solving tags (temporary migration button)
+                Button(role: .destructive) {
+                    cleanupProblemSolvingTags()
+                } label: {
+                    Label("Cleanup Problem Solving Tags", systemImage: "trash")
+                }
+                
+                // Cleanup technical categories (temporary migration button)
+                Button(role: .destructive) {
+                    cleanupTechnicalCategoriesMigration()
+                } label: {
+                    Label("Cleanup Technical Categories", systemImage: "wrench.and.screwdriver")
+                }
+                
                 Button {
-                    // Export functionality (placeholder)
+                    exportData()
                 } label: {
                     Label("Export Data", systemImage: "square.and.arrow.up")
                 }
+                
+                if showingExportSuccess {
+                    HStack(spacing: CSpace.sm) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(CColor.strength)
+                        Text("Data exported successfully")
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
+                    }
+                    .transition(.opacity)
+                }
 
                 Button {
-                    // Import functionality (placeholder)
+                    showingImportPicker = true
                 } label: {
                     Label("Import Data", systemImage: "square.and.arrow.down")
                 }
@@ -279,9 +314,57 @@ struct SettingsView: View {
         .sheet(isPresented: $showingTeamManagement) {
             TeamManagementView()
         }
+        .fileExporter(
+            isPresented: $showingExportActivity,
+            document: exportFileURL != nil ? CatalyzeDocument(fileURL: exportFileURL!) : nil,
+            contentType: .json,
+            defaultFilename: generateExportFilename()
+        ) { result in
+            switch result {
+            case .success(let url):
+                print("Export successful: \(url)")
+                withAnimation {
+                    showingExportSuccess = true
+                }
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    withAnimation {
+                        showingExportSuccess = false
+                    }
+                }
+            case .failure(let error):
+                Logger.error(error, context: "Export file dialog")
+                importErrorMessage = "Failed to export: \(error.localizedDescription)"
+                showingImportError = true
+            }
+        }
+        .fileImporter(
+            isPresented: $showingImportPicker,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImport(result: result)
+        }
+        .alert("Import Successful", isPresented: $showingImportSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your data has been imported successfully.")
+        }
+        .alert("Import Failed", isPresented: $showingImportError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(importErrorMessage)
+        }
     }
 
     // MARK: - Helpers --------------------------------------------------------
+    
+    private func generateExportFilename() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        let dateString = formatter.string(from: Date())
+        return "Catalyze-Export-\(dateString).json"
+    }
 
     private func loadSettings() {
         // Load EM profile
@@ -539,21 +622,395 @@ struct SettingsView: View {
             }
         }
     }
+    
+    // MARK: - Export/Import --------------------------------------------------
+    
+    private func cleanupProblemSolvingTags() {
+        Logger.log("Starting cleanup of 'Problem Solving' tags", level: .info)
+        
+        let descriptor = FetchDescriptor<StrengthWeakness>(
+            predicate: #Predicate { $0.category == "Problem Solving" }
+        )
+        
+        do {
+            let tags = try context.fetch(descriptor)
+            Logger.log("Found \(tags.count) 'Problem Solving' tags to delete", level: .info)
+            
+            for tag in tags {
+                context.delete(tag)
+            }
+            
+            try context.save()
+            Logger.log("Successfully deleted \(tags.count) 'Problem Solving' tags", level: .success)
+            
+            // Show success feedback
+            withAnimation {
+                showingSampleDataSuccess = true
+            }
+            
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation {
+                    showingSampleDataSuccess = false
+                }
+            }
+        } catch {
+            Logger.error(error, context: "Cleanup Problem Solving tags")
+            importErrorMessage = "Failed to cleanup tags: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
+    
+    private func cleanupTechnicalCategoriesMigration() {
+        Logger.log("Starting technical categories cleanup", level: .info)
+        
+        var deletedCount = 0
+        var renamedCount = 0
+        
+        do {
+            // Delete "Language Mastery"
+            let languageMasteryDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Language Mastery" }
+            )
+            let languageMasteryTags = try context.fetch(languageMasteryDescriptor)
+            for tag in languageMasteryTags {
+                context.delete(tag)
+                deletedCount += 1
+            }
+            
+            // Delete "Security"
+            let securityDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Security" }
+            )
+            let securityTags = try context.fetch(securityDescriptor)
+            for tag in securityTags {
+                context.delete(tag)
+                deletedCount += 1
+            }
+            
+            // Rename "Debugging Logic" → "Debugging"
+            let debuggingLogicDescriptor = FetchDescriptor<StrengthWeakness>(
+                predicate: #Predicate { $0.category == "Debugging Logic" }
+            )
+            let debuggingLogicTags = try context.fetch(debuggingLogicDescriptor)
+            for tag in debuggingLogicTags {
+                tag.category = "Debugging"
+                renamedCount += 1
+            }
+            
+            try context.save()
+            Logger.log("Technical cleanup complete: \(deletedCount) deleted, \(renamedCount) renamed", level: .success)
+            
+            // Show success feedback
+            withAnimation {
+                showingSampleDataSuccess = true
+            }
+            
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation {
+                    showingSampleDataSuccess = false
+                }
+            }
+        } catch {
+            Logger.error(error, context: "Technical categories cleanup")
+            importErrorMessage = "Failed to cleanup: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
+    
+    private func exportData() {
+        Logger.log("Export data initiated", level: .info)
+        do {
+            // Fetch all team members
+            let descriptor = FetchDescriptor<TeamMember>(sortBy: [SortDescriptor(\.name)])
+            let members = try context.fetch(descriptor)
+            Logger.log("Fetched \(members.count) members for export", level: .info)
+            
+            // Create exportable data structure
+            let exportData = ExportData(
+                version: "1.0.0",
+                exportDate: Date(),
+                emProfile: store.emProfile,
+                members: members.map { member in
+                    ExportMember(
+                        id: member.id,
+                        name: member.name,
+                        role: member.role,
+                        seniority: member.seniorityRaw,
+                        photoUrl: member.photoUrl,
+                        photoData: member.photoData,
+                        mentorId: member.mentor?.id,
+                        mentorName: member.mentorName,
+                        externalMentees: member.externalMentees,
+                        stack: (member.stack ?? []).map { entry in
+                            ExportStackEntry(tag: entry.tagRaw, level: entry.levelRaw)
+                        },
+                        tags: (member.tags ?? []).map { tag in
+                            ExportTag(
+                                kind: tag.kindRaw,
+                                category: tag.category,
+                                intensity: tag.intensityRaw,
+                                note: tag.note,
+                                createdAt: tag.createdAt
+                            )
+                        },
+                        observations: (member.observations ?? []).map { obs in
+                            ExportObservation(
+                                text: obs.text,
+                                context: obs.contextRaw,
+                                createdAt: obs.createdAt
+                            )
+                        },
+                        createdAt: member.createdAt,
+                        updatedAt: member.updatedAt
+                    )
+                }
+            )
+            
+            // Encode to JSON
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(exportData)
+            Logger.log("JSON encoded: \(jsonData.count) bytes", level: .success)
+            
+            // Write to temporary file with safe filename
+            let tempDir = FileManager.default.temporaryDirectory
+            let filename = generateExportFilename()
+            let tempURL = tempDir.appendingPathComponent(filename)
+            
+            // Remove old file if exists
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try FileManager.default.removeItem(at: tempURL)
+            }
+            
+            try jsonData.write(to: tempURL)
+            Logger.log("File written to: \(tempURL.path)", level: .success)
+            
+            exportFileURL = tempURL
+            showingExportActivity = true
+            
+        } catch {
+            Logger.error(error, context: "Export data")
+            importErrorMessage = "Failed to export: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
+    
+    private func handleImport(result: Result<[URL], Error>) {
+        do {
+            guard let selectedFile = try result.get().first else {
+                throw NSError(
+                    domain: "Catalyze",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "No file selected"]
+                )
+            }
+            
+            Logger.log("Starting import from: \(selectedFile.lastPathComponent)", level: .info)
+            
+            // Start accessing security-scoped resource
+            guard selectedFile.startAccessingSecurityScopedResource() else {
+                throw NSError(
+                    domain: "Catalyze",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Unable to access file. Please try selecting the file again."]
+                )
+            }
+            defer { selectedFile.stopAccessingSecurityScopedResource() }
+            
+            // Read and decode JSON
+            let jsonData = try Data(contentsOf: selectedFile)
+            Logger.log("Read \(jsonData.count) bytes from file", level: .info)
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let importData = try decoder.decode(ExportData.self, from: jsonData)
+            
+            Logger.log("Decoded \(importData.members.count) members from export version \(importData.version)", level: .info)
+            
+            // Validate version compatibility
+            if importData.version != "1.0.0" {
+                Logger.log("Warning: Import version \(importData.version) may not be fully compatible", level: .warning)
+            }
+            
+            // Import members
+            var memberIdMap: [String: TeamMember] = [:]
+            var importedCount = 0
+            
+            for exportMember in importData.members {
+                // Check if member already exists
+                let checkDescriptor = FetchDescriptor<TeamMember>(
+                    predicate: #Predicate { $0.id == exportMember.id }
+                )
+                let existing = try context.fetch(checkDescriptor)
+                
+                if !existing.isEmpty {
+                    Logger.log("Skipping duplicate member: \(exportMember.name)", level: .warning)
+                    continue
+                }
+                
+                let member = TeamMember(
+                    id: exportMember.id,
+                    name: exportMember.name,
+                    role: exportMember.role,
+                    seniority: Seniority(rawValue: exportMember.seniority) ?? .t2_1,
+                    photoUrl: exportMember.photoUrl,
+                    createdAt: exportMember.createdAt,
+                    updatedAt: exportMember.updatedAt
+                )
+                member.photoData = exportMember.photoData
+                member.mentorName = exportMember.mentorName
+                member.externalMentees = exportMember.externalMentees
+                
+                // Import stack
+                member.stack = exportMember.stack.map { entry in
+                    let stackEntry = StackEntry(
+                        tag: StackTag(rawValue: entry.tag) ?? .typescript,
+                        level: StackProficiency(rawValue: entry.level) ?? .learning
+                    )
+                    stackEntry.member = member
+                    context.insert(stackEntry)
+                    return stackEntry
+                }
+                
+                // Import tags
+                member.tags = exportMember.tags.map { tag in
+                    let strengthWeakness = StrengthWeakness(
+                        kind: SWKind(rawValue: tag.kind) ?? .strength,
+                        category: tag.category,
+                        intensity: Intensity(rawValue: tag.intensity) ?? .emerging,
+                        note: tag.note,
+                        createdAt: tag.createdAt
+                    )
+                    strengthWeakness.member = member
+                    context.insert(strengthWeakness)
+                    return strengthWeakness
+                }
+                
+                // Import observations
+                member.observations = exportMember.observations.map { obs in
+                    let observation = TeamObservation(
+                        memberId: member.id,
+                        text: obs.text,
+                        context: ObservationContext(rawValue: obs.context) ?? .oneOnOne,
+                        createdAt: obs.createdAt
+                    )
+                    observation.member = member
+                    context.insert(observation)
+                    return observation
+                }
+                
+                context.insert(member)
+                memberIdMap[member.id] = member
+                importedCount += 1
+            }
+            
+            // Set up mentor relationships (after all members are created)
+            for exportMember in importData.members {
+                if let mentorId = exportMember.mentorId,
+                   let member = memberIdMap[exportMember.id],
+                   let mentor = memberIdMap[mentorId] {
+                    member.mentor = mentor
+                }
+            }
+            
+            // Import EM profile if included
+            if let emProfile = importData.emProfile {
+                store.setEMProfile(emProfile)
+                Logger.log("EM Profile imported", level: .info)
+            }
+            
+            // Save all changes
+            try context.save()
+            Logger.log("Import successful: \(importedCount) members imported", level: .success)
+            
+            showingImportSuccess = true
+            
+        } catch let decodingError as DecodingError {
+            Logger.error(decodingError, context: "Import - JSON decoding")
+            importErrorMessage = "Invalid file format. Please ensure you're importing a valid Catalyze export file."
+            showingImportError = true
+        } catch {
+            Logger.error(error, context: "Import")
+            importErrorMessage = "Failed to import data: \(error.localizedDescription)"
+            showingImportError = true
+        }
+    }
 }
 
-// MARK: - Appearance Mode ----------------------------------------------------
+// MARK: - Export/Import Data Structures -------------------------------------
 
-enum AppearanceMode: String, CaseIterable, Codable {
-    case system = "System"
-    case light = "Light"
-    case dark = "Dark"
+struct ExportData: Codable {
+    let version: String
+    let exportDate: Date
+    let emProfile: EMProfile?
+    let members: [ExportMember]
+}
+
+struct ExportMember: Codable {
+    let id: String
+    let name: String
+    let role: String
+    let seniority: String
+    let photoUrl: String?
+    let photoData: Data?
+    let mentorId: String?
+    let mentorName: String?
+    let externalMentees: [String]
+    let stack: [ExportStackEntry]
+    let tags: [ExportTag]
+    let observations: [ExportObservation]
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct ExportStackEntry: Codable {
+    let tag: String
+    let level: String
+}
+
+struct ExportTag: Codable {
+    let kind: String
+    let category: String
+    let intensity: String
+    let note: String?
+    let createdAt: Date
+}
+
+struct ExportObservation: Codable {
+    let text: String
+    let context: String
+    let createdAt: Date
+}
+
+// MARK: - File Document Wrapper ---------------------------------------------
+
+struct CatalyzeDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
     
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
+    let fileURL: URL
+    
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        guard let url = configuration.file.regularFileContents.flatMap({ data in
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("temp-import.json")
+            try? data.write(to: tempURL)
+            return tempURL
+        }) else {
+            throw CocoaError(.fileReadCorruptFile)
         }
+        self.fileURL = url
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = try Data(contentsOf: fileURL)
+        return FileWrapper(regularFileWithContents: data)
     }
 }
 

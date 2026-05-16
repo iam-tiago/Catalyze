@@ -22,7 +22,8 @@ import SwiftUI
 
 @Model
 final class StrengthWeakness {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique) - we rely on UUID uniqueness
+    var id: String = UUID().uuidString
 
     /// Strength or weakness — stored as the raw string of `SWKind`.
     var kindRaw: String = SWKind.strength.rawValue
@@ -84,7 +85,8 @@ final class StrengthWeakness {
 
 @Model
 final class StackEntry {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
 
     /// Stored as the raw string of `StackTag`.
     var tagRaw: String = StackTag.typescript.rawValue
@@ -117,7 +119,8 @@ final class StackEntry {
 
 @Model
 final class TeamMember {
-    @Attribute(.unique) var id: String = UUID().uuidString
+    // CloudKit doesn't support @Attribute(.unique)
+    var id: String = UUID().uuidString
     var name: String = ""
     var role: String = ""
     var seniorityRaw: String = Seniority.t2_1.rawValue
@@ -134,8 +137,13 @@ final class TeamMember {
 
     /// Internal mentor (another team member). `nullify` so deleting the
     /// mentor doesn't cascade-delete this member.
-    @Relationship(deleteRule: .nullify)
+    /// CloudKit requires inverse relationship
+    @Relationship(deleteRule: .nullify, inverse: \TeamMember.mentees)
     var mentor: TeamMember? = nil
+    
+    /// Inverse of mentor - people this member mentors
+    @Relationship(deleteRule: .nullify)
+    var mentees: [TeamMember]? = []
 
     /// Free-text name of an external mentor (someone not in the team).
     var mentorName: String? = nil
@@ -148,16 +156,16 @@ final class TeamMember {
     @Relationship(deleteRule: .cascade, inverse: \StrengthWeakness.member)
     var tags: [StrengthWeakness]? = []
 
-    @Relationship(deleteRule: .cascade)
+    @Relationship(deleteRule: .cascade, inverse: \TeamObservation.member)
     var observations: [TeamObservation]? = []
 
-    @Relationship(deleteRule: .cascade)
+    @Relationship(deleteRule: .cascade, inverse: \DevelopmentPlan.member)
     var idps: [DevelopmentPlan]? = []
 
-    @Relationship(deleteRule: .cascade)
+    @Relationship(deleteRule: .cascade, inverse: \PromotionReadiness.member)
     var promotionRecords: [PromotionReadiness]? = []
 
-    @Relationship(deleteRule: .cascade)
+    @Relationship(deleteRule: .cascade, inverse: \ProfileEvent.member)
     var profileEvents: [ProfileEvent]? = []
 
     var createdAt: Date = Date()

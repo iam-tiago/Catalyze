@@ -90,53 +90,106 @@ final class AppStore {
     // model carries over.
 
     func addMember(_ member: TeamMember, in context: ModelContext) {
+        Logger.log("Attempting to add member: \(member.name)", level: .info)
+        
         context.insert(member)
-        try? context.save()
+        
+        do {
+            try context.save()
+            Logger.log("Member saved successfully: \(member.name)", level: .success)
+        } catch {
+            Logger.error(error, context: "Adding member \(member.name)")
+            // TODO: Propagate error to UI layer for user notification
+        }
     }
 
     func updateMember(_ member: TeamMember, in context: ModelContext) {
+        Logger.log("Updating member: \(member.name)", level: .info)
+        
         member.updatedAt = Date()
-        try? context.save()
+        
+        do {
+            try context.save()
+            Logger.log("Member updated successfully", level: .success)
+        } catch {
+            Logger.error(error, context: "Updating member \(member.name)")
+        }
     }
 
     func deleteMember(_ member: TeamMember, in context: ModelContext) {
         // SwiftData cascades to all relationship-owned children
         // (observations, idps, promotionRecords, profileEvents, tags, stack).
+        let memberName = member.name
         context.delete(member)
         if selectedMemberId == member.id {
             setSelectedMember(nil)
         }
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Member deleted: \(memberName)")
+        } catch {
+            print("✗ Failed to delete member: \(error)")
+        }
     }
 
     func addObservation(_ obs: TeamObservation, in context: ModelContext) {
         context.insert(obs)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Observation saved")
+        } catch {
+            print("✗ Failed to save observation: \(error)")
+        }
     }
 
     func deleteObservation(_ obs: TeamObservation, in context: ModelContext) {
         context.delete(obs)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Observation deleted")
+        } catch {
+            print("✗ Failed to delete observation: \(error)")
+        }
     }
 
     func addInsight(_ insight: Insight, in context: ModelContext) {
         context.insert(insight)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Insight saved")
+        } catch {
+            print("✗ Failed to save insight: \(error)")
+        }
     }
 
     func addIDP(_ idp: DevelopmentPlan, in context: ModelContext) {
         context.insert(idp)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ IDP saved")
+        } catch {
+            print("✗ Failed to save IDP: \(error)")
+        }
     }
 
     func updateIDP(_ idp: DevelopmentPlan, in context: ModelContext) {
         idp.updatedAt = Date()
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ IDP updated")
+        } catch {
+            print("✗ Failed to update IDP: \(error)")
+        }
     }
 
     func deleteIDP(_ idp: DevelopmentPlan, in context: ModelContext) {
         context.delete(idp)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ IDP deleted")
+        } catch {
+            print("✗ Failed to delete IDP: \(error)")
+        }
     }
 
     func addPromotionReadiness(
@@ -144,7 +197,12 @@ final class AppStore {
         in context: ModelContext
     ) {
         context.insert(record)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Promotion readiness saved")
+        } catch {
+            print("✗ Failed to save promotion readiness: \(error)")
+        }
     }
 
     func updatePromotionReadiness(
@@ -152,7 +210,12 @@ final class AppStore {
         in context: ModelContext
     ) {
         record.updatedAt = Date()
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Promotion readiness updated")
+        } catch {
+            print("✗ Failed to update promotion readiness: \(error)")
+        }
     }
 
     func deletePromotionReadiness(
@@ -160,12 +223,22 @@ final class AppStore {
         in context: ModelContext
     ) {
         context.delete(record)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Promotion readiness deleted")
+        } catch {
+            print("✗ Failed to delete promotion readiness: \(error)")
+        }
     }
 
     func addProfileEvent(_ event: ProfileEvent, in context: ModelContext) {
         context.insert(event)
-        try? context.save()
+        do {
+            try context.save()
+            print("✓ Profile event saved")
+        } catch {
+            print("✗ Failed to save profile event: \(error)")
+        }
     }
 }
 

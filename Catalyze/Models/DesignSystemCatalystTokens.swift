@@ -56,6 +56,9 @@ enum CatalystTypography {
     /// Large section titles (e.g., "Generate Insight")
     static let sectionTitle = Font.title2.bold()
     
+    /// Title 3 for prominent headings
+    static let title3 = Font.title3
+    
     /// Card and subsection titles
     static let cardTitle = Font.headline
     
