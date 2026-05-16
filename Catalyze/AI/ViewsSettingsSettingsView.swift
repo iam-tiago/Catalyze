@@ -5,7 +5,8 @@
 //  Settings view for configuring the EM profile, API credentials, and
 //  app preferences. Also includes import/export functionality.
 //
-//  Equivalent to `src/components/Settings/SettingsView.tsx` in the web app.
+//  ✨ Lightly adapted to Catalyze Design System v1.0
+//  (Form keeps native styling, only confirmations and colors updated)
 //
 
 import SwiftUI
@@ -129,12 +130,12 @@ struct SettingsView: View {
                 
                 // Confirmation message
                 if showProfileSaved {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Profile saved successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -181,12 +182,12 @@ struct SettingsView: View {
                 
                 // Confirmation message
                 if showCredentialsSaved {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Credentials saved successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -211,12 +212,12 @@ struct SettingsView: View {
                 }
                 
                 if showingSampleDataSuccess {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Sample data loaded successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }
@@ -249,12 +250,12 @@ struct SettingsView: View {
                 }
                 
                 if showingExportSuccess {
-                    HStack {
+                    HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(CColor.strength)
                         Text("Data exported successfully")
-                            .font(.caption)
-                            .foregroundStyle(.green)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.strength)
                     }
                     .transition(.opacity)
                 }

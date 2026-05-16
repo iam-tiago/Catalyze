@@ -6,7 +6,8 @@
 //  team stats (size, seniority distribution, active IDPs) and the
 //  aggregated team radar chart.
 //
-//  Equivalent to `src/components/TeamMembers/TeamOverview.tsx` in the web app.
+//  ✨ Migrated to Catalyze Design System v1.0
+//  ⚠️ Radar charts preserved (manually adjusted)
 //
 
 import SwiftUI
@@ -33,170 +34,183 @@ struct TeamOverview: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header (always visible)
-            Button {
-                withAnimation(.smooth) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Label("Team Overview", systemImage: "chart.bar.fill")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    // Stats preview when collapsed
-                    if !isExpanded {
-                        Text("\(members.count) members")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            headerView
             
             // Content (collapsible)
             if isExpanded {
                 Divider()
                 
-                VStack(spacing: 20) {
+                VStack(spacing: CSpace.xl) {
                     // Stats grid
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ],
-                        spacing: 12
-                    ) {
-                        StatCard(
-                            title: "Team Size",
-                            value: "\(members.count)",
-                            icon: "person.3.fill",
-                            color: .blue
-                        )
-                        
-                        StatCard(
-                            title: "Active IDPs",
-                            value: "\(activeIDPsCount)",
-                            icon: "list.bullet.clipboard.fill",
-                            color: .green
-                        )
-                        
-                        StatCard(
-                            title: "In Promotion",
-                            value: "\(membersInPromotionCount)",
-                            icon: "arrow.up.circle.fill",
-                            color: .orange
-                        )
-                    }
+                    statsGrid
                     
                     // Distribution charts (side by side)
                     if !members.isEmpty {
-                        HStack(alignment: .top, spacing: 16) {
-                            // Seniority distribution
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Seniority Distribution")
-                                    .font(.subheadline.weight(.semibold))
-                                
-                                ForEach(seniorityBreakdown, id: \.seniority) { item in
-                                    HStack {
-                                        Text(item.seniority.label)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        
-                                        Spacer()
-                                        
-                                        Text("\(item.count)")
-                                            .font(.caption.weight(.medium))
-                                        
-                                        // Bar
-                                        GeometryReader { geo in
-                                            RoundedRectangle(cornerRadius: 2)
-                                                .fill(.blue)
-                                                .frame(width: geo.size.width * (Double(item.count) / Double(members.count)))
-                                        }
-                                        .frame(width: 60, height: 6)
-                                    }
-                                }
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
-                            
-                            // Stack distribution
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Stack Distribution")
-                                    .font(.subheadline.weight(.semibold))
-                                
-                                ForEach(stackBreakdown.prefix(8), id: \.tag) { item in
-                                    HStack {
-                                        Text(item.tag.rawValue)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        
-                                        Spacer()
-                                        
-                                        Text("\(item.count)")
-                                            .font(.caption.weight(.medium))
-                                        
-                                        // Bar
-                                        GeometryReader { geo in
-                                            RoundedRectangle(cornerRadius: 2)
-                                                .fill(.purple)
-                                                .frame(width: geo.size.width * (Double(item.count) / Double(totalStackEntries)))
-                                        }
-                                        .frame(width: 60, height: 6)
-                                    }
-                                }
-                                
-                                if stackBreakdown.isEmpty {
-                                    Text("No stack data")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .padding(.vertical, 8)
-                                }
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
-                        }
+                        distributionCharts
                     }
                     
                     // Team radar with toggle
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Radar type picker
-                        Picker("Radar Type", selection: $selectedRadarType) {
-                            ForEach(RadarType.allCases, id: \.self) { type in
-                                Label(type.rawValue, systemImage: type.icon)
-                                    .tag(type)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        
-                        // Show appropriate radar based on selection
-                        switch selectedRadarType {
-                        case .behavioral:
-                            TeamRadar()
-                                .transition(.opacity.combined(with: .scale))
-                        case .technical:
-                            TeamTechnicalRadar()
-                                .transition(.opacity.combined(with: .scale))
-                        }
-                    }
-                    .animation(.smooth, value: selectedRadarType)
+                    radarSection
                 }
-                .padding()
+                .padding(CSpace.lg)
             }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(CColor.neutral0)
+        .clipShape(RoundedRectangle(cornerRadius: CRadius.md))
+        .cardShadow()
+    }
+    
+    // MARK: - Subviews -------------------------------------------------------
+    
+    private var headerView: some View {
+        Button {
+            withAnimation(.smooth) {
+                isExpanded.toggle()
+            }
+        } label: {
+            HStack {
+                Label("Team Overview", systemImage: "chart.bar.fill")
+                    .font(CFont.headline)
+                    .foregroundStyle(CColor.neutral900)
+                
+                Spacer()
+                
+                // Stats preview when collapsed
+                if !isExpanded {
+                    Text("\(members.count) members")
+                        .font(CFont.caption1)
+                        .foregroundStyle(CColor.neutral600)
+                }
+                
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(CColor.neutral400)
+            }
+            .padding(CSpace.lg)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var statsGrid: some View {
+        HStack(spacing: CSpace.md) {
+            StatCard(
+                icon: "person.3.fill",
+                value: "\(members.count)",
+                label: "Team Size",
+                variant: .info
+            )
+            
+            StatCard(
+                icon: "checklist",
+                value: "\(activeIDPsCount)",
+                label: "Active IDPs",
+                variant: .strength
+            )
+            
+            StatCard(
+                icon: "arrow.up.circle.fill",
+                value: "\(membersInPromotionCount)",
+                label: "In Promotion",
+                variant: .growth
+            )
+        }
+    }
+    
+    private var distributionCharts: some View {
+        HStack(alignment: .top, spacing: CSpace.lg) {
+            // Seniority distribution
+            distributionCard(
+                title: "Seniority Distribution",
+                items: seniorityBreakdown.map { (label: $0.seniority.label, count: $0.count) },
+                total: members.count,
+                color: CColor.info
+            )
+            
+            // Stack distribution
+            distributionCard(
+                title: "Stack Distribution",
+                items: stackBreakdown.prefix(8).map { (label: $0.tag.rawValue, count: $0.count) },
+                total: totalStackEntries,
+                color: CColor.proficiencyAdvanced,
+                emptyMessage: stackBreakdown.isEmpty ? "No stack data" : nil
+            )
+        }
+    }
+    
+    private func distributionCard(
+        title: String,
+        items: [(label: String, count: Int)],
+        total: Int,
+        color: Color,
+        emptyMessage: String? = nil
+    ) -> some View {
+        VStack(alignment: .leading, spacing: CSpace.sm) {
+            Text(title)
+                .font(CFont.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(CColor.neutral900)
+            
+            if let emptyMessage = emptyMessage {
+                Text(emptyMessage)
+                    .font(CFont.caption1)
+                    .foregroundStyle(CColor.neutral400)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, CSpace.sm)
+            } else {
+                ForEach(items, id: \.label) { item in
+                    HStack {
+                        Text(item.label)
+                            .font(CFont.caption1)
+                            .foregroundStyle(CColor.neutral600)
+                        
+                        Spacer()
+                        
+                        Text("\(item.count)")
+                            .font(CFont.caption1)
+                            .fontWeight(.medium)
+                            .foregroundStyle(CColor.neutral900)
+                        
+                        // Bar
+                        GeometryReader { geo in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(color)
+                                .frame(width: geo.size.width * (Double(item.count) / Double(max(total, 1))))
+                        }
+                        .frame(width: 60, height: 6)
+                    }
+                }
+            }
+        }
+        .padding(CSpace.lg)
+        .frame(maxWidth: .infinity)
+        .background(CColor.neutral100)
+        .clipShape(RoundedRectangle(cornerRadius: CRadius.sm))
+    }
+    
+    private var radarSection: some View {
+        VStack(alignment: .leading, spacing: CSpace.md) {
+            // Radar type picker
+            Picker("Radar Type", selection: $selectedRadarType) {
+                ForEach(RadarType.allCases, id: \.self) { type in
+                    Label(type.rawValue, systemImage: type.icon)
+                        .tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            
+            // Show appropriate radar based on selection
+            // ⚠️ DO NOT MODIFY RADARS - manually adjusted paddings/positions
+            switch selectedRadarType {
+            case .behavioral:
+                TeamRadar()
+                    .transition(.opacity.combined(with: .scale))
+            case .technical:
+                TeamTechnicalRadar()
+                    .transition(.opacity.combined(with: .scale))
+            }
+        }
+        .animation(.smooth, value: selectedRadarType)
     }
     
     // MARK: - Helpers --------------------------------------------------------
@@ -244,34 +258,6 @@ struct TeamOverview: View {
     }
 }
 
-// MARK: - Stat Card ----------------------------------------------------------
-
-private struct StatCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(color)
-            
-            Text(value)
-                .font(.title.bold())
-                .contentTransition(.numericText())
-            
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
 // MARK: - Preview ------------------------------------------------------------
 
 #Preview {
@@ -293,7 +279,8 @@ private struct StatCard: View {
     
     return ScrollView {
         TeamOverview()
-            .padding()
+            .padding(CSpace.x2l)
     }
+    .background(CColor.neutral50)
     .modelContainer(container)
 }
