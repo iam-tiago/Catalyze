@@ -40,6 +40,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		3836A7962FBE82A700B4CBD2 /* Documentation */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Documentation;
+			sourceTree = "<group>";
+		};
 		38ACEB842FA7F71A006940FC /* Catalyze */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -88,6 +93,7 @@
 		38ACEB792FA7F71A006940FC = {
 			isa = PBXGroup;
 			children = (
+				3836A7962FBE82A700B4CBD2 /* Documentation */,
 				38ACEB842FA7F71A006940FC /* Catalyze */,
 				38ACEB922FA7F71B006940FC /* CatalyzeTests */,
 				38ACEB9C2FA7F71B006940FC /* CatalyzeUITests */,
@@ -121,6 +127,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				3836A7962FBE82A700B4CBD2 /* Documentation */,
 				38ACEB842FA7F71A006940FC /* Catalyze */,
 			);
 			name = Catalyze;
