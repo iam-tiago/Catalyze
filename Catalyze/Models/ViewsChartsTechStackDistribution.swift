@@ -13,22 +13,41 @@ import Charts
 struct TechStackDistribution: View {
     let member: TeamMember
     
+    @State private var showingEditSheet = false
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Tech Stack Distribution")
-                    .font(.headline)
-                
-                if let stack = member.stack, !stack.isEmpty {
-                    Text("\(stack.count) technologies")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("No technologies added yet")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tech Stack Distribution")
+                        .font(.headline)
+                    
+                    if let stack = member.stack, !stack.isEmpty {
+                        Text("\(stack.count) technologies")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("No technologies added yet")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                
+                Spacer()
+                
+                Button {
+                    showingEditSheet = true
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
+            }
+            .sheet(isPresented: $showingEditSheet) {
+                EditTechStackSheet(member: member)
             }
             
             // Chart
@@ -70,9 +89,18 @@ struct TechStackDistribution: View {
                     Text("Add technologies to see distribution")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
+                    
+                    Button {
+                        showingEditSheet = true
+                    } label: {
+                        Label("Add Technologies", systemImage: "plus.circle.fill")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 150)
+                .frame(height: 180)
                 .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
             }
         }
