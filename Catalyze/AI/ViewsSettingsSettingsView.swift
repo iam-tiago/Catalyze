@@ -269,6 +269,12 @@ struct SettingsView: View {
                         }
                     }
                 }
+                
+                NavigationLink {
+                    TechStackTagsManager()
+                } label: {
+                    Label("Tech Stack Tags", systemImage: "tag.fill")
+                }
             } header: {
                 Text("Organization")
             } footer: {

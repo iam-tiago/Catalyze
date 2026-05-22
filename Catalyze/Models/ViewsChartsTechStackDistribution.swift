@@ -53,7 +53,7 @@ struct TechStackDistribution: View {
             // Chart
             if let stack = member.stack, !stack.isEmpty {
                 VStack(spacing: 12) {
-                    ForEach(stack.sorted(by: { $0.tag.rawValue < $1.tag.rawValue })) { entry in
+                    ForEach(stack.sorted(by: { $0.tagRaw < $1.tagRaw })) { entry in
                         TechStackBar(entry: entry)
                     }
                 }
@@ -124,7 +124,7 @@ private struct TechStackBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Technology name
-            Text(entry.tag.rawValue)
+            Text(entry.tagRaw)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.primary)
             

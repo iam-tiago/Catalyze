@@ -12,6 +12,7 @@ import SwiftData
 struct EditTechStackSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \CustomStackTag.name) private var customTags: [CustomStackTag]
     
     let member: TeamMember
     
@@ -19,8 +20,12 @@ struct EditTechStackSheet: View {
     @State private var editingEntry: StackEntry?
     
     // Tecnologias já adicionadas (para não permitir duplicatas)
-    private var addedTags: Set<StackTag> {
-        Set((member.stack ?? []).map { $0.tag })
+    private var addedTags: Set<String> {
+        Set((member.stack ?? []).map { $0.tagRaw })
+    }
+    
+    private var totalAvailableTags: Int {
+        StackTag.allCases.count + customTags.filter { $0.isActive }.count
     }
     
     var body: some View {
@@ -28,7 +33,7 @@ struct EditTechStackSheet: View {
             Group {
                 if let stack = member.stack, !stack.isEmpty {
                     List {
-                        ForEach(stack.sorted(by: { $0.tag.rawValue < $1.tag.rawValue })) { entry in
+                        ForEach(stack.sorted(by: { $0.tagRaw < $1.tagRaw })) { entry in
                             TechStackEntryRow(entry: entry)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -66,7 +71,7 @@ struct EditTechStackSheet: View {
                     } label: {
                         Label("Add", systemImage: "plus")
                     }
-                    .disabled(addedTags.count >= StackTag.allCases.count)
+                    .disabled(addedTags.count >= totalAvailableTags)
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -106,7 +111,7 @@ private struct TechStackEntryRow: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.tag.rawValue)
+                Text(entry.tagRaw)
                     .font(.body.weight(.medium))
                 
                 Text(entry.level.rawValue)
@@ -152,28 +157,32 @@ private struct TechStackEntryRow: View {
 private struct AddTechStackEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \CustomStackTag.name) private var customTags: [CustomStackTag]
     
     let member: TeamMember
-    let excludedTags: Set<StackTag>
+    let excludedTags: Set<String>
     
-    @State private var selectedTag: StackTag?
+    @State private var selectedTagName: String?
     @State private var selectedLevel: StackProficiency = .learning
     
-    private var availableTags: [StackTag] {
-        StackTag.allCases.filter { !excludedTags.contains($0) }
+    private var availableTagNames: [String] {
+        let predefined = StackTag.allCases.map { $0.rawValue }
+        let custom = customTags.filter { $0.isActive }.map { $0.name }
+        let all = (predefined + custom).sorted()
+        return all.filter { !excludedTags.contains($0) }
     }
     
     var body: some View {
         NavigationStack {
             Form {
                 Section("Technology") {
-                    Picker("Technology", selection: $selectedTag) {
+                    Picker("Technology", selection: $selectedTagName) {
                         Text("Select a technology")
-                            .tag(nil as StackTag?)
+                            .tag(nil as String?)
                         
-                        ForEach(availableTags) { tag in
-                            Text(tag.rawValue)
-                                .tag(tag as StackTag?)
+                        ForEach(availableTagNames, id: \.self) { tagName in
+                            Text(tagName)
+                                .tag(tagName as String?)
                         }
                     }
                     .pickerStyle(.menu)
@@ -213,16 +222,22 @@ private struct AddTechStackEntrySheet: View {
                     Button("Add") {
                         addEntry()
                     }
-                    .disabled(selectedTag == nil)
+                    .disabled(selectedTagName == nil)
                 }
             }
         }
     }
     
     private func addEntry() {
-        guard let tag = selectedTag else { return }
+        guard let tagName = selectedTagName else { return }
         
-        let entry = StackEntry(tag: tag, level: selectedLevel)
+        // Create entry directly with tagRaw and levelRaw
+        let entry = StackEntry(
+            id: UUID().uuidString,
+            tag: StackTag.typescript, // Dummy, will be overwritten
+            level: selectedLevel
+        )
+        entry.tagRaw = tagName  // Set the actual tag name (works for both predefined and custom)
         entry.member = member
         
         modelContext.insert(entry)
@@ -257,7 +272,7 @@ private struct EditTechStackEntrySheet: View {
             Form {
                 Section("Technology") {
                     HStack {
-                        Text(entry.tag.rawValue)
+                        Text(entry.tagRaw)
                             .font(.body)
                         Spacer()
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
@@ -432,7 +447,7 @@ private struct LevelDescription: View {
     let context = ModelContext(container)
     let alice = try! context.fetch(FetchDescriptor<TeamMember>()).first!
     
-    return EditTechStackSheet(member: alice)
+    EditTechStackSheet(member: alice)
         .modelContainer(container)
 }
 
@@ -456,6 +471,6 @@ private struct LevelDescription: View {
     let context = ModelContext(container)
     let alice = try! context.fetch(FetchDescriptor<TeamMember>()).first!
     
-    return AddTechStackEntrySheet(member: alice, excludedTags: [])
+    AddTechStackEntrySheet(member: alice, excludedTags: [])
         .modelContainer(container)
 }

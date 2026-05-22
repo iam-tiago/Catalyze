@@ -44,6 +44,8 @@ enum CatalyzeSchemaV1: VersionedSchema {
             // ✅ ADDED: Seniority customization models
             OrganizationConfig.self,
             SeniorityLevel.self,
+            // ✅ ADDED: Tech stack customization
+            CustomStackTag.self,
         ]
     }
 }

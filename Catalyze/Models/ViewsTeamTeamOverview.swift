@@ -127,14 +127,11 @@ struct TeamOverview: View {
                 color: CColor.info
             )
             
-            // Stack distribution
-            distributionCard(
-                title: "Stack Distribution",
-                items: stackBreakdown.prefix(8).map { (label: $0.tag.rawValue, count: $0.count) },
-                total: totalStackEntries,
-                color: CColor.proficiencyAdvanced,
-                emptyMessage: stackBreakdown.isEmpty ? "No stack data" : nil
-            )
+            // Tech Stack distribution with proficiency levels
+            VStack(alignment: .leading, spacing: CSpace.sm) {
+                TeamTechStackDistribution()
+            }
+            .frame(maxWidth: .infinity)
         }
     }
     
