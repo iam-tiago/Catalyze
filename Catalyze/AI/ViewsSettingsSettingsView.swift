@@ -17,6 +17,7 @@ import PhotosUI
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var context
+    @Environment(\.seniorityService) private var seniorityService
 
     @State private var name = ""
     @State private var role = ""
@@ -229,20 +230,6 @@ struct SettingsView: View {
                     Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
                 }
                 
-                // Cleanup Problem Solving tags (temporary migration button)
-                Button(role: .destructive) {
-                    cleanupProblemSolvingTags()
-                } label: {
-                    Label("Cleanup Problem Solving Tags", systemImage: "trash")
-                }
-                
-                // Cleanup technical categories (temporary migration button)
-                Button(role: .destructive) {
-                    cleanupTechnicalCategoriesMigration()
-                } label: {
-                    Label("Cleanup Technical Categories", systemImage: "wrench.and.screwdriver")
-                }
-                
                 Button {
                     exportData()
                 } label: {
@@ -265,6 +252,28 @@ struct SettingsView: View {
                 } label: {
                     Label("Import Data", systemImage: "square.and.arrow.down")
                 }
+            }
+            
+            // ✅ ADDED: Seniority Configuration section
+            Section {
+                NavigationLink {
+                    SeniorityConfigView()
+                } label: {
+                    HStack {
+                        Label("Seniority Levels", systemImage: "chart.bar.fill")
+                        Spacer()
+                        if let service = seniorityService {
+                            Text(service.currentPreset.displayName)
+                                .font(CFont.caption1)
+                                .foregroundStyle(CColor.neutral600)
+                        }
+                    }
+                }
+            } header: {
+                Text("Organization")
+            } footer: {
+                Text("Customize your team's career ladder and seniority levels.")
+                    .font(.caption)
             }
             
             // Appearance section
@@ -625,6 +634,10 @@ struct SettingsView: View {
     
     // MARK: - Export/Import --------------------------------------------------
     
+    // MARK: - Temporary Migration Functions (Commented Out)
+    // Uncomment these if you need to run data cleanup operations
+    
+    /*
     private func cleanupProblemSolvingTags() {
         Logger.log("Starting cleanup of 'Problem Solving' tags", level: .info)
         
@@ -718,6 +731,7 @@ struct SettingsView: View {
             showingImportError = true
         }
     }
+    */
     
     private func exportData() {
         Logger.log("Export data initiated", level: .info)
