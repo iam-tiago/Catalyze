@@ -31,7 +31,7 @@ struct TagForm: View {
                 // Category section
                 Section("Category") {
                     Picker("Select category", selection: $category) {
-                        ForEach(TagCategory.predefined, id: \.self) { cat in
+                        ForEach(BehavioralCategory.all, id: \.self) { cat in
                             Text(cat).tag(cat)
                         }
 
@@ -135,7 +135,7 @@ struct TagForm: View {
         }
 
         // Editing existing tag
-        if TagCategory.predefined.contains(tag.category) {
+        if BehavioralCategory.all.contains(tag.category) {
             category = tag.category
             isCustomCategory = false
         } else {
