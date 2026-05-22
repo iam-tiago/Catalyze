@@ -119,13 +119,11 @@ struct TeamOverview: View {
     
     private var distributionCharts: some View {
         HStack(alignment: .top, spacing: CSpace.lg) {
-            // Seniority distribution
-            distributionCard(
-                title: "Seniority Distribution",
-                items: seniorityBreakdown.map { (label: $0.seniority.label, count: $0.count) },
-                total: members.count,
-                color: CColor.info
-            )
+            // Seniority distribution (new standardized version)
+            VStack(alignment: .leading, spacing: CSpace.sm) {
+                TeamSeniorityDistribution()
+            }
+            .frame(maxWidth: .infinity)
             
             // Tech Stack distribution with proficiency levels
             VStack(alignment: .leading, spacing: CSpace.sm) {

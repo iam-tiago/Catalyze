@@ -41,11 +41,11 @@ struct TeamTechStackDistribution: View {
                 .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
             } else {
                 VStack(spacing: 0) {
-                    // Technologies list with proficiency breakdown
-                    ForEach(stackData.prefix(10)) { data in
+                    // Show only top 4 technologies
+                    ForEach(stackData.prefix(4)) { data in
                         TechStackTeamRow(data: data)
                         
-                        if data.technology != stackData.prefix(10).last?.technology {
+                        if data.technology != stackData.prefix(4).last?.technology {
                             Divider()
                                 .padding(.leading, 16)
                         }
@@ -53,28 +53,13 @@ struct TeamTechStackDistribution: View {
                 }
                 .background(Color(white: 0.5, opacity: 0.1), in: RoundedRectangle(cornerRadius: 12))
                 
-                if stackData.count > 10 {
-                    Text("Showing top 10 of \(stackData.count) technologies")
+                if stackData.count > 4 {
+                    Text("Showing top 4 of \(stackData.count) technologies")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal)
+                        .padding(.top, 8)
                 }
-                
-                // Legend
-                HStack(spacing: 16) {
-                    ForEach(StackProficiency.allCases) { level in
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(colorForLevel(level))
-                                .frame(width: 8, height: 8)
-                            
-                            Text(level.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .padding(.horizontal)
             }
         }
     }
@@ -111,7 +96,7 @@ struct TeamTechStackDistribution: View {
                 averageLevel: avgLevel
             )
         }
-        .sorted { $0.totalCount > $1.totalCount } // Sort by most used
+        .sorted { $0.averageLevel > $1.averageLevel } // Sort by highest average level (Expert → Learning)
     }
     
     private func calculateAverageLevel(from levels: [StackProficiency: Int]) -> Double {
@@ -159,7 +144,7 @@ private struct TechStackTeamRow: View {
     let data: TeamTechData
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             // Technology name and total count
             HStack {
                 Text(data.technology)
@@ -172,7 +157,7 @@ private struct TechStackTeamRow: View {
                     .foregroundStyle(.secondary)
             }
             
-            // Proficiency distribution bar
+            // Proficiency distribution bar (smaller height)
             GeometryReader { geometry in
                 HStack(spacing: 2) {
                     // Learning
@@ -216,51 +201,41 @@ private struct TechStackTeamRow: View {
                     }
                 }
             }
-            .frame(height: 24)
+            .frame(height: 16) // Reduced from 24 to 16
             
-            // Breakdown numbers
+            // Breakdown labels (without numbers)
             HStack(spacing: 12) {
                 if data.learningCount > 0 {
-                    proficiencyLabel(count: data.learningCount, level: "Learning", color: .orange)
+                    proficiencyLabel(level: "Learning", color: .orange)
                 }
                 if data.proficientCount > 0 {
-                    proficiencyLabel(count: data.proficientCount, level: "Proficient", color: .blue)
+                    proficiencyLabel(level: "Proficient", color: .blue)
                 }
                 if data.advancedCount > 0 {
-                    proficiencyLabel(count: data.advancedCount, level: "Advanced", color: .purple)
+                    proficiencyLabel(level: "Advanced", color: .purple)
                 }
                 if data.expertCount > 0 {
-                    proficiencyLabel(count: data.expertCount, level: "Expert", color: .green)
+                    proficiencyLabel(level: "Expert", color: .green)
                 }
             }
         }
-        .padding()
+        .padding(.vertical, 12) // Reduced padding
+        .padding(.horizontal, 16)
     }
     
     private func proficiencySegment(count: Int, total: Int, color: Color, width: CGFloat) -> some View {
         let percentage = Double(count) / Double(total)
         
-        return RoundedRectangle(cornerRadius: 4)
+        return RoundedRectangle(cornerRadius: 3)
             .fill(color)
             .frame(width: width * percentage)
-            .overlay {
-                if percentage > 0.15 {
-                    Text("\(count)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.white)
-                }
-            }
     }
     
-    private func proficiencyLabel(count: Int, level: String, color: Color) -> some View {
+    private func proficiencyLabel(level: String, color: Color) -> some View {
         HStack(spacing: 3) {
             Circle()
                 .fill(color)
-                .frame(width: 6, height: 6)
-            
-            Text("\(count)")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.primary)
+                .frame(width: 5, height: 5)
             
             Text(level)
                 .font(.caption2)

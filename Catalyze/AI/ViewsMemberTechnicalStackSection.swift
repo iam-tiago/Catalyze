@@ -145,57 +145,94 @@ private struct StackEntryRow: View {
 private struct StackEntryForm: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Query(sort: \CustomStackTag.name) private var customTags: [CustomStackTag]
     
     let member: TeamMember
     let entryToEdit: StackEntry?
     
-    @State private var selectedTag: StackTag
+    @State private var selectedTagName: String
     @State private var selectedLevel: StackProficiency
     
     init(member: TeamMember, entryToEdit: StackEntry?) {
         self.member = member
         self.entryToEdit = entryToEdit
         
-        _selectedTag = State(initialValue: entryToEdit?.tag ?? .swiftUI)
+        _selectedTagName = State(initialValue: entryToEdit?.tagRaw ?? "")
         _selectedLevel = State(initialValue: entryToEdit?.level ?? .learning)
+    }
+    
+    private var availableTagNames: [String] {
+        let predefined = StackTag.allCases.map { $0.rawValue }
+        let custom = customTags.filter { $0.isActive }.map { $0.name }
+        let all = (predefined + custom).sorted()
+        
+        // When editing, allow current tag
+        if isEditing {
+            return all
+        }
+        
+        // When adding, exclude already added tags
+        let addedTags = Set((member.stack ?? []).map { $0.tagRaw })
+        return all.filter { !addedTags.contains($0) }
     }
     
     var body: some View {
         NavigationStack {
             Form {
                 Section("Technology") {
-                    Picker("Select Technology", selection: $selectedTag) {
-                        ForEach(StackTag.allCases) { tag in
-                            Text(tag.rawValue).tag(tag)
+                    if isEditing {
+                        HStack {
+                            Text(selectedTagName)
+                                .font(.body)
+                            Spacer()
+                            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                .foregroundStyle(.secondary)
                         }
+                    } else {
+                        Picker("Technology", selection: $selectedTagName) {
+                            if selectedTagName.isEmpty {
+                                Text("Select Technology")
+                                    .tag("")
+                            }
+                            
+                            ForEach(availableTagNames, id: \.self) { tagName in
+                                Text(tagName)
+                                    .tag(tagName)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
-                    .pickerStyle(.menu)
                 }
                 
                 Section("Proficiency Level") {
-                    Picker("Select Level", selection: $selectedLevel) {
-                        ForEach(StackProficiency.allCases) { level in
-                            Text(level.rawValue).tag(level)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(StackProficiency.allCases) { level in
+                    ForEach(StackProficiency.allCases) { level in
+                        Button {
+                            selectedLevel = level
+                        } label: {
                             HStack {
                                 Text(level.rawValue)
-                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                
                                 Spacer()
-                                Text(levelDescription(level))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                
+                                HStack(spacing: 3) {
+                                    LevelIndicator(level: level)
+                                    
+                                    if selectedLevel == level {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(colorForLevel(level))
+                                            .font(.body.weight(.semibold))
+                                    }
+                                }
                             }
                         }
                     }
+                }
+                
+                Section {
+                    LevelDescription(level: selectedLevel)
                 } header: {
-                    Text("Level Descriptions")
+                    Text("About This Level")
                 }
             }
             .navigationTitle(isEditing ? "Edit Technology" : "Add Technology")
@@ -211,6 +248,7 @@ private struct StackEntryForm: View {
                     Button(isEditing ? "Save" : "Add") {
                         save()
                     }
+                    .disabled(!isEditing && selectedTagName.isEmpty)
                 }
             }
         }
@@ -220,23 +258,27 @@ private struct StackEntryForm: View {
         entryToEdit != nil
     }
     
-    private func levelDescription(_ level: StackProficiency) -> String {
+    private func colorForLevel(_ level: StackProficiency) -> Color {
         switch level {
-        case .learning: return "Actively learning and practicing"
-        case .proficient: return "Comfortable working independently"
-        case .advanced: return "Deep knowledge and experience"
-        case .expert: return "Authority, can mentor others"
+        case .learning:   return .orange
+        case .proficient: return .blue
+        case .advanced:   return .purple
+        case .expert:     return .green
         }
     }
     
     private func save() {
         if let existing = entryToEdit {
             // Update existing
-            existing.tag = selectedTag
             existing.level = selectedLevel
         } else {
             // Create new
-            let newEntry = StackEntry(tag: selectedTag, level: selectedLevel)
+            let newEntry = StackEntry(
+                id: UUID().uuidString,
+                tag: StackTag.swiftUI, // Dummy, will be overwritten
+                level: selectedLevel
+            )
+            newEntry.tagRaw = selectedTagName
             newEntry.member = member
             context.insert(newEntry)
             
@@ -250,6 +292,96 @@ private struct StackEntryForm: View {
         
         try? context.save()
         dismiss()
+    }
+}
+
+// MARK: - Level Indicator ----------------------------------------------------
+
+private struct LevelIndicator: View {
+    let level: StackProficiency
+    
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<4, id: \.self) { index in
+                Circle()
+                    .fill(index < levelDots ? colorForLevel : Color.secondary.opacity(0.2))
+                    .frame(width: 6, height: 6)
+            }
+        }
+    }
+    
+    private var levelDots: Int {
+        switch level {
+        case .learning:   return 1
+        case .proficient: return 2
+        case .advanced:   return 3
+        case .expert:     return 4
+        }
+    }
+    
+    private var colorForLevel: Color {
+        switch level {
+        case .learning:   return .orange
+        case .proficient: return .blue
+        case .advanced:   return .purple
+        case .expert:     return .green
+        }
+    }
+}
+
+// MARK: - Level Description --------------------------------------------------
+
+private struct LevelDescription: View {
+    let level: StackProficiency
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: iconName)
+                    .foregroundStyle(colorForLevel)
+                    .font(.title3)
+                
+                Text(level.rawValue)
+                    .font(.headline)
+                    .foregroundStyle(colorForLevel)
+            }
+            
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var iconName: String {
+        switch level {
+        case .learning:   return "leaf"
+        case .proficient: return "checkmark.circle"
+        case .advanced:   return "star.circle"
+        case .expert:     return "crown"
+        }
+    }
+    
+    private var description: String {
+        switch level {
+        case .learning:
+            return "Currently learning this technology. Can work on simple tasks with guidance."
+        case .proficient:
+            return "Comfortable with this technology. Can work independently on most tasks."
+        case .advanced:
+            return "Strong expertise. Can handle complex tasks and mentor others."
+        case .expert:
+            return "Deep mastery. Can architect solutions and is a go-to resource for the team."
+        }
+    }
+    
+    private var colorForLevel: Color {
+        switch level {
+        case .learning:   return .orange
+        case .proficient: return .blue
+        case .advanced:   return .purple
+        case .expert:     return .green
+        }
     }
 }
 

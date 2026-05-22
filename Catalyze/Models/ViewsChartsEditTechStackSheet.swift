@@ -177,7 +177,7 @@ private struct AddTechStackEntrySheet: View {
             Form {
                 Section("Technology") {
                     Picker("Technology", selection: $selectedTagName) {
-                        Text("Select a technology")
+                        Text("Select Technology")
                             .tag(nil as String?)
                         
                         ForEach(availableTagNames, id: \.self) { tagName in
@@ -189,18 +189,28 @@ private struct AddTechStackEntrySheet: View {
                 }
                 
                 Section("Proficiency Level") {
-                    Picker("Level", selection: $selectedLevel) {
-                        ForEach(StackProficiency.allCases) { level in
+                    ForEach(StackProficiency.allCases) { level in
+                        Button {
+                            selectedLevel = level
+                        } label: {
                             HStack {
                                 Text(level.rawValue)
+                                    .foregroundStyle(.primary)
+                                
                                 Spacer()
-                                LevelIndicator(level: level)
+                                
+                                HStack(spacing: 3) {
+                                    LevelIndicator(level: level)
+                                    
+                                    if selectedLevel == level {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(colorForLevel(level))
+                                            .font(.body.weight(.semibold))
+                                    }
+                                }
                             }
-                            .tag(level)
                         }
                     }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
                 }
                 
                 Section {
@@ -225,6 +235,15 @@ private struct AddTechStackEntrySheet: View {
                     .disabled(selectedTagName == nil)
                 }
             }
+        }
+    }
+    
+    private func colorForLevel(_ level: StackProficiency) -> Color {
+        switch level {
+        case .learning:   return .orange
+        case .proficient: return .blue
+        case .advanced:   return .purple
+        case .expert:     return .green
         }
     }
     
@@ -281,18 +300,28 @@ private struct EditTechStackEntrySheet: View {
                 }
                 
                 Section("Proficiency Level") {
-                    Picker("Level", selection: $selectedLevel) {
-                        ForEach(StackProficiency.allCases) { level in
+                    ForEach(StackProficiency.allCases) { level in
+                        Button {
+                            selectedLevel = level
+                        } label: {
                             HStack {
                                 Text(level.rawValue)
+                                    .foregroundStyle(.primary)
+                                
                                 Spacer()
-                                LevelIndicator(level: level)
+                                
+                                HStack(spacing: 3) {
+                                    LevelIndicator(level: level)
+                                    
+                                    if selectedLevel == level {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(colorForLevel(level))
+                                            .font(.body.weight(.semibold))
+                                    }
+                                }
                             }
-                            .tag(level)
                         }
                     }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
                 }
                 
                 Section {
@@ -317,6 +346,15 @@ private struct EditTechStackEntrySheet: View {
                     .disabled(selectedLevel == entry.level)
                 }
             }
+        }
+    }
+    
+    private func colorForLevel(_ level: StackProficiency) -> Color {
+        switch level {
+        case .learning:   return .orange
+        case .proficient: return .blue
+        case .advanced:   return .purple
+        case .expert:     return .green
         }
     }
     
