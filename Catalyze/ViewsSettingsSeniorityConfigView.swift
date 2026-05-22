@@ -165,7 +165,7 @@ struct SeniorityConfigView: View {
                         order: level.order,
                         colorHex: level.colorHex,
                         category: level.category,
-                        description: level.description
+                        levelDescription: level.levelDescription
                     )
                 }
             }
@@ -242,7 +242,7 @@ struct SeniorityLevelFormView: View {
     @State private var category: String = "IC"
     @State private var order: Int = 10
     @State private var colorHex: String = "#3B82F6"
-    @State private var description: String = ""
+    @State private var levelDescription: String = ""
     
     private let categories = ["IC", "Senior", "Staff", "Leadership", "Management"]
     
@@ -295,7 +295,7 @@ struct SeniorityLevelFormView: View {
                 }
                 
                 Section("Description (Optional)") {
-                    TextEditor(text: $description)
+                    TextEditor(text: $levelDescription)
                         .frame(minHeight: 60)
                 }
             }
@@ -322,7 +322,7 @@ struct SeniorityLevelFormView: View {
                 category = levelData.category
                 order = levelData.order
                 colorHex = levelData.colorHex
-                description = levelData.description ?? ""
+                levelDescription = levelData.levelDescription ?? ""
             }
         }
     }
@@ -342,7 +342,7 @@ struct SeniorityLevelFormView: View {
             order: order,
             colorHex: colorHex,
             category: category,
-            description: description.isEmpty ? nil : description
+            levelDescription: levelDescription.isEmpty ? nil : levelDescription
         )
         
         onSave(newLevel)

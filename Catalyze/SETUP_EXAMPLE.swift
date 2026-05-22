@@ -173,8 +173,8 @@ struct ExamplePromotionView: View {
                         VStack(alignment: .leading) {
                             Text(next.displayName)
                                 .font(CFont.headline)
-                            if let description = next.description {
-                                Text(description)
+                            if let levelDescription = next.levelDescription {
+                                Text(levelDescription)
                                     .font(CFont.caption1)
                                     .foregroundStyle(CColor.neutral600)
                             }

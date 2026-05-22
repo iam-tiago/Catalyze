@@ -124,20 +124,48 @@ struct StatCard: View {
 // MARK: - 2. TierBadge
 
 /// Badge que exibe o nível hierárquico de um membro (T2-1, T3-1, T4...).
+/// Suporta cores customizadas quando usado com SeniorityLevel.
 ///
 /// ```swift
+/// // Uso simples com string (cores padrão)
 /// TierBadge(tier: "T3-1")
+///
+/// // Uso com SeniorityLevel customizado
+/// TierBadge(level: seniorityLevel)
 /// ```
 struct TierBadge: View {
-    let tier: String
+    let code: String
+    let backgroundColor: Color
+    let foregroundColor: Color
+    
+    /// Default initializer with standard brand colors
+    init(tier: String) {
+        self.code = tier
+        self.backgroundColor = CColor.brandPrimaryLight
+        self.foregroundColor = CColor.brandPrimary
+    }
+    
+    /// Initializer with custom SeniorityLevel (uses level's color)
+    init(level: SeniorityLevel) {
+        self.code = level.code
+        self.foregroundColor = level.color
+        self.backgroundColor = level.color.opacity(0.15)
+    }
+    
+    /// Initializer with explicit colors
+    init(tier: String, foreground: Color, background: Color) {
+        self.code = tier
+        self.foregroundColor = foreground
+        self.backgroundColor = background
+    }
 
     var body: some View {
-        Text(tier)
+        Text(code)
             .font(CFont.caption2)
-            .foregroundStyle(CColor.brandPrimary)
+            .foregroundStyle(foregroundColor)
             .padding(.horizontal, CSpace.sm)
             .padding(.vertical, CSpace.xs)
-            .background(CColor.brandPrimaryLight)
+            .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CRadius.xs))
     }
 }
@@ -586,6 +614,83 @@ struct TechStackRow: View {
 }
 
 
+// MARK: - 13. SeniorityLevelRow
+
+/// Linha de exibição de nível de senioridade customizado.
+/// Usado na tela de configuração para mostrar/editar níveis.
+///
+/// ```swift
+/// SeniorityLevelRow(
+///     level: seniorityLevel,
+///     onEdit: { /* editar */ },
+///     onDelete: { /* deletar */ }
+/// )
+/// ```
+struct SeniorityLevelRow: View {
+    let code: String
+    let displayName: String
+    let category: String
+    let color: Color
+    var isEditable: Bool = true
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
+
+    var body: some View {
+        HStack(spacing: CSpace.md) {
+            // Color indicator
+            Circle()
+                .fill(color)
+                .frame(width: 12, height: 12)
+
+            // Level info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(code)
+                    .font(CFont.headline)
+                    .foregroundStyle(CColor.neutral900)
+                Text(displayName)
+                    .font(CFont.caption1)
+                    .foregroundStyle(CColor.neutral600)
+            }
+
+            Spacer()
+
+            // Category badge
+            Text(category)
+                .font(CFont.caption2)
+                .foregroundStyle(CColor.neutral600)
+                .padding(.horizontal, CSpace.sm)
+                .padding(.vertical, CSpace.xs)
+                .background(CColor.neutral100)
+                .clipShape(RoundedRectangle(cornerRadius: CRadius.xs))
+
+            if isEditable {
+                // Edit button
+                if let onEdit {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14))
+                            .foregroundStyle(CColor.brandPrimary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Delete button
+                if let onDelete {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundStyle(CColor.destructive)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, CSpace.lg)
+        .padding(.vertical, CSpace.md)
+    }
+}
+
+
 // MARK: - Previews
 
 #Preview("StatCard") {
@@ -671,4 +776,67 @@ struct TechStackRow: View {
     .padding()
     .background(CColor.neutral0)
 }
+
+#Preview("SeniorityLevelRow") {
+    VStack(spacing: 0) {
+        SeniorityLevelRow(
+            code: "T2-1",
+            displayName: "Senior Engineer I",
+            category: "Senior",
+            color: Color(hex: "#3B82F6"),
+            isEditable: false
+        )
+        
+        Divider()
+        
+        SeniorityLevelRow(
+            code: "Sênior",
+            displayName: "Desenvolvedor Sênior",
+            category: "IC",
+            color: Color(hex: "#8B5CF6"),
+            isEditable: true,
+            onEdit: { print("Edit") },
+            onDelete: { print("Delete") }
+        )
+        
+        Divider()
+        
+        SeniorityLevelRow(
+            code: "L6",
+            displayName: "Staff SWE",
+            category: "Staff",
+            color: Color(hex: "#8B5CF6"),
+            isEditable: true,
+            onEdit: { print("Edit") },
+            onDelete: { print("Delete") }
+        )
+    }
+    .background(CColor.neutral0)
+}
+#Preview("TierBadge with Custom Colors") {
+    VStack(spacing: CSpace.lg) {
+        // Default colors
+        HStack(spacing: CSpace.sm) {
+            TierBadge(tier: "T2-1")
+            TierBadge(tier: "T3-1")
+            TierBadge(tier: "T4")
+        }
+        
+        // Custom colors (simulating SeniorityLevel)
+        HStack(spacing: CSpace.sm) {
+            TierBadge(tier: "Júnior", foreground: Color(hex: "#10B981"), background: Color(hex: "#10B981").opacity(0.15))
+            TierBadge(tier: "Pleno", foreground: Color(hex: "#3B82F6"), background: Color(hex: "#3B82F6").opacity(0.15))
+            TierBadge(tier: "Sênior", foreground: Color(hex: "#8B5CF6"), background: Color(hex: "#8B5CF6").opacity(0.15))
+        }
+        
+        HStack(spacing: CSpace.sm) {
+            TierBadge(tier: "L3", foreground: Color(hex: "#10B981"), background: Color(hex: "#10B981").opacity(0.15))
+            TierBadge(tier: "L5", foreground: Color(hex: "#6366F1"), background: Color(hex: "#6366F1").opacity(0.15))
+            TierBadge(tier: "L8", foreground: Color(hex: "#C026D3"), background: Color(hex: "#C026D3").opacity(0.15))
+        }
+    }
+    .padding()
+    .background(CColor.neutral50)
+}
+
 

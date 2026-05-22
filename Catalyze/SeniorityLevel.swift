@@ -22,7 +22,7 @@ final class SeniorityLevel {
     /// Short code displayed in badges (e.g., "T2-1", "Senior", "L5")
     var code: String = ""
     
-    /// Full display name (e.g., "Senior Engineer II", "Sênior Pleno")
+    /// Full display name (e.g., "Senior Engineer II", "Mid-Level Developer")
     var displayName: String = ""
     
     /// Numeric order for sorting (0 = entry level, 100 = highest)
@@ -37,8 +37,8 @@ final class SeniorityLevel {
     /// Whether this level is currently active (allows soft-delete)
     var isActive: Bool = true
     
-    /// Optional description for promotion criteria
-    var description: String? = nil
+    /// Optional details about promotion criteria and expectations
+    var levelDescription: String? = nil
     
     /// Inverse relationship to organization config
     var organization: OrganizationConfig? = nil
@@ -51,7 +51,7 @@ final class SeniorityLevel {
         colorHex: String,
         category: String,
         isActive: Bool = true,
-        description: String? = nil
+        levelDescription: String? = nil
     ) {
         self.id = id
         self.code = code
@@ -60,7 +60,7 @@ final class SeniorityLevel {
         self.colorHex = colorHex
         self.category = category
         self.isActive = isActive
-        self.description = description
+        self.levelDescription = levelDescription
     }
     
     /// Computed color from hex string
@@ -131,7 +131,7 @@ struct SeniorityLevelData: Identifiable, Hashable {
     let order: Int
     let colorHex: String
     let category: String
-    let description: String?
+    let levelDescription: String?
     
     init(
         id: String = UUID().uuidString,
@@ -140,7 +140,7 @@ struct SeniorityLevelData: Identifiable, Hashable {
         order: Int,
         colorHex: String,
         category: String,
-        description: String? = nil
+        levelDescription: String? = nil
     ) {
         self.id = id
         self.code = code
@@ -148,7 +148,7 @@ struct SeniorityLevelData: Identifiable, Hashable {
         self.order = order
         self.colorHex = colorHex
         self.category = category
-        self.description = description
+        self.levelDescription = levelDescription
     }
     
     /// Convert to SwiftData model
@@ -160,7 +160,7 @@ struct SeniorityLevelData: Identifiable, Hashable {
             order: order,
             colorHex: colorHex,
             category: category,
-            description: description
+            levelDescription: levelDescription
         )
     }
 }
@@ -180,10 +180,10 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .tLevel:      return "T-Level (T1-T4)"
-        case .traditional: return "Junior/Pleno/Senior"
+        case .traditional: return "Junior/Mid/Senior"
         case .faang:       return "FAANG (L3-L8)"
         case .management:  return "IC + Management Track"
-        case .startup:     return "Startup (4 níveis)"
+        case .startup:     return "Startup (4 levels)"
         case .custom:      return "Custom"
         }
     }
@@ -191,17 +191,17 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .tLevel:
-            return "Sistema de níveis técnicos com sub-divisões (T1-3, T2-1, T2-2, T2-3, T3-1, T3-2, T3-3, T4)"
+            return "T-Level system: T1 (Associate), T2 (Specialist), T3 (Senior), T4 (Expert)"
         case .traditional:
-            return "Nomenclatura tradicional brasileira: Júnior, Pleno, Sênior, Especialista"
+            return "Traditional career ladder: Junior, Mid-Level, Senior, Lead"
         case .faang:
-            return "Níveis usados em Big Tech: L3 (Entry), L4 (Mid), L5 (Senior), L6 (Staff), L7 (Senior Staff), L8 (Principal)"
+            return "Levels used in Big Tech: L3 (Entry), L4 (Mid), L5 (Senior), L6 (Staff), L7 (Senior Staff), L8 (Principal)"
         case .management:
-            return "Bifurcação de carreira: Individual Contributor e Management tracks"
+            return "Career bifurcation: Individual Contributor and Management tracks"
         case .startup:
-            return "Sistema simplificado para startups: Junior, Mid, Senior, Lead"
+            return "Simplified system for startups: Junior, Mid, Senior, Lead"
         case .custom:
-            return "Crie seus próprios níveis customizados"
+            return "Create your own custom levels"
         }
     }
     
@@ -212,103 +212,103 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
             return [
                 SeniorityLevelData(
                     code: "T1-3",
-                    displayName: "IC Engineer",
+                    displayName: "Associate Engineer",
                     order: 10,
                     colorHex: "#94A3B8",
-                    category: "IC",
-                    description: "Individual Contributor - Entry level engineer"
+                    category: "Associate",
+                    levelDescription: "Entry level engineer building foundational skills"
                 ),
                 SeniorityLevelData(
                     code: "T2-1",
-                    displayName: "Senior Engineer I",
+                    displayName: "Specialist I",
                     order: 20,
                     colorHex: "#3B82F6",
-                    category: "Senior",
-                    description: "Senior level with growing autonomy"
+                    category: "Specialist",
+                    levelDescription: "Specialist level with growing autonomy"
                 ),
                 SeniorityLevelData(
                     code: "T2-2",
-                    displayName: "Senior Engineer II",
+                    displayName: "Specialist II",
                     order: 30,
                     colorHex: "#2563EB",
-                    category: "Senior",
-                    description: "Solid senior with team influence"
+                    category: "Specialist",
+                    levelDescription: "Solid specialist with team influence"
                 ),
                 SeniorityLevelData(
                     code: "T2-3",
-                    displayName: "Senior Engineer III",
+                    displayName: "Specialist III",
                     order: 40,
                     colorHex: "#1D4ED8",
-                    category: "Senior",
-                    description: "Strong senior ready for Staff track"
+                    category: "Specialist",
+                    levelDescription: "Strong specialist ready for Senior track"
                 ),
                 SeniorityLevelData(
                     code: "T3-1",
-                    displayName: "Staff Engineer I",
+                    displayName: "Senior I",
                     order: 50,
                     colorHex: "#7C3AED",
-                    category: "Staff",
-                    description: "Staff level with cross-team impact"
+                    category: "Senior",
+                    levelDescription: "Senior level with cross-team impact"
                 ),
                 SeniorityLevelData(
                     code: "T3-2",
-                    displayName: "Staff Engineer II",
+                    displayName: "Senior II",
                     order: 60,
                     colorHex: "#6D28D9",
-                    category: "Staff",
-                    description: "Senior Staff with org-level influence"
+                    category: "Senior",
+                    levelDescription: "Advanced Senior with org-level influence"
                 ),
                 SeniorityLevelData(
                     code: "T3-3",
-                    displayName: "Principal Engineer",
+                    displayName: "Senior III (Principal)",
                     order: 70,
                     colorHex: "#5B21B6",
-                    category: "Staff",
-                    description: "Principal with company-wide impact"
+                    category: "Senior",
+                    levelDescription: "Principal level with company-wide impact"
                 ),
                 SeniorityLevelData(
                     code: "T4",
-                    displayName: "Distinguished Engineer",
+                    displayName: "Expert (Distinguished)",
                     order: 80,
                     colorHex: "#4C1D95",
-                    category: "Leadership",
-                    description: "Highest technical level - industry influence"
+                    category: "Expert",
+                    levelDescription: "Highest technical level - industry influence"
                 )
             ]
             
         case .traditional:
             return [
                 SeniorityLevelData(
-                    code: "Júnior",
-                    displayName: "Desenvolvedor Júnior",
+                    code: "Junior",
+                    displayName: "Junior Developer",
                     order: 10,
                     colorHex: "#10B981",
                     category: "IC",
-                    description: "Profissional em início de carreira"
+                    levelDescription: "Entry-level professional starting their career"
                 ),
                 SeniorityLevelData(
-                    code: "Pleno",
-                    displayName: "Desenvolvedor Pleno",
+                    code: "Mid",
+                    displayName: "Mid-Level Developer",
                     order: 30,
                     colorHex: "#3B82F6",
                     category: "IC",
-                    description: "Profissional com autonomia em tarefas complexas"
+                    levelDescription: "Professional with autonomy in complex tasks"
                 ),
                 SeniorityLevelData(
-                    code: "Sênior",
-                    displayName: "Desenvolvedor Sênior",
+                    code: "Senior",
+                    displayName: "Senior Developer",
                     order: 50,
                     colorHex: "#8B5CF6",
                     category: "IC",
-                    description: "Profissional com liderança técnica"
+                    levelDescription: "Professional with technical leadership"
                 ),
                 SeniorityLevelData(
-                    code: "Especialista",
-                    displayName: "Especialista",
+                    code: "Lead",
+                    displayName: "Lead Engineer",
                     order: 70,
                     colorHex: "#EC4899",
                     category: "Leadership",
-                    description: "Referência técnica da organização"
+                    levelDescription: "Technical reference for the organization"
                 )
             ]
             
@@ -320,7 +320,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 10,
                     colorHex: "#10B981",
                     category: "IC",
-                    description: "Entry level software engineer"
+                    levelDescription: "Entry level software engineer"
                 ),
                 SeniorityLevelData(
                     code: "L4",
@@ -328,7 +328,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 25,
                     colorHex: "#3B82F6",
                     category: "IC",
-                    description: "Mid-level software engineer"
+                    levelDescription: "Mid-level software engineer"
                 ),
                 SeniorityLevelData(
                     code: "L5",
@@ -336,7 +336,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 40,
                     colorHex: "#6366F1",
                     category: "Senior",
-                    description: "Senior software engineer"
+                    levelDescription: "Senior software engineer"
                 ),
                 SeniorityLevelData(
                     code: "L6",
@@ -344,7 +344,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 55,
                     colorHex: "#8B5CF6",
                     category: "Staff",
-                    description: "Staff software engineer"
+                    levelDescription: "Staff software engineer"
                 ),
                 SeniorityLevelData(
                     code: "L7",
@@ -352,7 +352,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 70,
                     colorHex: "#A855F7",
                     category: "Staff",
-                    description: "Senior Staff software engineer"
+                    levelDescription: "Senior Staff software engineer"
                 ),
                 SeniorityLevelData(
                     code: "L8",
@@ -360,7 +360,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 85,
                     colorHex: "#C026D3",
                     category: "Leadership",
-                    description: "Principal engineer"
+                    levelDescription: "Principal engineer"
                 )
             ]
             
@@ -373,7 +373,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 10,
                     colorHex: "#10B981",
                     category: "IC",
-                    description: "Individual Contributor - Junior"
+                    levelDescription: "Individual Contributor - Junior"
                 ),
                 SeniorityLevelData(
                     code: "IC2",
@@ -381,7 +381,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 20,
                     colorHex: "#3B82F6",
                     category: "IC",
-                    description: "Individual Contributor - Mid"
+                    levelDescription: "Individual Contributor - Mid"
                 ),
                 SeniorityLevelData(
                     code: "IC3",
@@ -389,7 +389,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 30,
                     colorHex: "#6366F1",
                     category: "IC",
-                    description: "Individual Contributor - Senior"
+                    levelDescription: "Individual Contributor - Senior"
                 ),
                 SeniorityLevelData(
                     code: "IC4",
@@ -397,7 +397,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 40,
                     colorHex: "#8B5CF6",
                     category: "IC",
-                    description: "Individual Contributor - Staff"
+                    levelDescription: "Individual Contributor - Staff"
                 ),
                 // Management Track
                 SeniorityLevelData(
@@ -406,7 +406,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 35,
                     colorHex: "#F59E0B",
                     category: "Management",
-                    description: "Manages a team of engineers"
+                    levelDescription: "Manages a team of engineers"
                 ),
                 SeniorityLevelData(
                     code: "M2",
@@ -414,7 +414,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 50,
                     colorHex: "#D97706",
                     category: "Management",
-                    description: "Manages multiple teams or senior ICs"
+                    levelDescription: "Manages multiple teams or senior ICs"
                 ),
                 SeniorityLevelData(
                     code: "M3",
@@ -422,7 +422,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 65,
                     colorHex: "#B45309",
                     category: "Management",
-                    description: "Leads engineering organization"
+                    levelDescription: "Leads engineering organization"
                 ),
                 SeniorityLevelData(
                     code: "M4",
@@ -430,7 +430,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 80,
                     colorHex: "#92400E",
                     category: "Management",
-                    description: "Leads engineering at company level"
+                    levelDescription: "Leads engineering at company level"
                 )
             ]
             
@@ -442,7 +442,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 10,
                     colorHex: "#10B981",
                     category: "IC",
-                    description: "Entry level"
+                    levelDescription: "Entry level"
                 ),
                 SeniorityLevelData(
                     code: "Mid",
@@ -450,7 +450,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 30,
                     colorHex: "#3B82F6",
                     category: "IC",
-                    description: "Autonomous engineer"
+                    levelDescription: "Autonomous engineer"
                 ),
                 SeniorityLevelData(
                     code: "Senior",
@@ -458,7 +458,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 50,
                     colorHex: "#8B5CF6",
                     category: "IC",
-                    description: "Technical leader"
+                    levelDescription: "Technical leader"
                 ),
                 SeniorityLevelData(
                     code: "Lead",
@@ -466,7 +466,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     order: 70,
                     colorHex: "#EC4899",
                     category: "Leadership",
-                    description: "Team technical leader"
+                    levelDescription: "Team technical leader"
                 )
             ]
             
@@ -485,66 +485,66 @@ extension Seniority {
         case .t1_3:
             return SeniorityLevelData(
                 code: "T1-3",
-                displayName: "IC Engineer",
+                displayName: "Associate Engineer",
                 order: 10,
                 colorHex: "#94A3B8",
-                category: "IC"
+                category: "Associate"
             )
         case .t2_1:
             return SeniorityLevelData(
                 code: "T2-1",
-                displayName: "Senior Engineer I",
+                displayName: "Specialist I",
                 order: 20,
                 colorHex: "#3B82F6",
-                category: "Senior"
+                category: "Specialist"
             )
         case .t2_2:
             return SeniorityLevelData(
                 code: "T2-2",
-                displayName: "Senior Engineer II",
+                displayName: "Specialist II",
                 order: 30,
                 colorHex: "#2563EB",
-                category: "Senior"
+                category: "Specialist"
             )
         case .t2_3:
             return SeniorityLevelData(
                 code: "T2-3",
-                displayName: "Senior Engineer III",
+                displayName: "Specialist III",
                 order: 40,
                 colorHex: "#1D4ED8",
-                category: "Senior"
+                category: "Specialist"
             )
         case .t3_1:
             return SeniorityLevelData(
                 code: "T3-1",
-                displayName: "Staff Engineer I",
+                displayName: "Senior I",
                 order: 50,
                 colorHex: "#7C3AED",
-                category: "Staff"
+                category: "Senior"
             )
         case .t3_2:
             return SeniorityLevelData(
                 code: "T3-2",
-                displayName: "Staff Engineer II",
+                displayName: "Senior II",
                 order: 60,
                 colorHex: "#6D28D9",
-                category: "Staff"
+                category: "Senior"
             )
         case .t3_3:
             return SeniorityLevelData(
                 code: "T3-3",
-                displayName: "Principal Engineer",
+                displayName: "Senior III (Principal)",
                 order: 70,
                 colorHex: "#5B21B6",
-                category: "Staff"
+                category: "Senior"
             )
         case .t4:
             return SeniorityLevelData(
                 code: "T4",
-                displayName: "Distinguished Engineer",
+                displayName: "Expert (Distinguished)",
                 order: 80,
                 colorHex: "#4C1D95",
-                category: "Leadership"
+                category: "Expert"
             )
         }
     }

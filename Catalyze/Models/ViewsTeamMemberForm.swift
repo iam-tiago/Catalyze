@@ -16,6 +16,7 @@ struct MemberForm: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.seniorityService) private var seniorityService
 
     /// If editing an existing member, pass it here. If nil, creates a new one.
     let memberToEdit: TeamMember?
@@ -24,6 +25,7 @@ struct MemberForm: View {
     @State private var name = ""
     @State private var role = ""
     @State private var seniority: Seniority = .t2_1
+    @State private var selectedSeniorityCode: String = "T2-1"
     @State private var photoUrl = ""
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var photoData: Data? = nil
@@ -45,9 +47,37 @@ struct MemberForm: View {
                     TextField("Role", text: $role)
                         .textContentType(.jobTitle)
 
-                    Picker("Seniority", selection: $seniority) {
-                        ForEach(Seniority.allCases) { level in
-                            Text(level.label).tag(level)
+                    // ✅ UPDATED: Seniority picker with custom levels and colors
+                    if let service = seniorityService, !service.levels.isEmpty {
+                        Picker("Seniority", selection: $selectedSeniorityCode) {
+                            ForEach(service.levels, id: \.code) { level in
+                                HStack {
+                                    Circle()
+                                        .fill(level.color)
+                                        .frame(width: 8, height: 8)
+                                    Text(level.displayName)
+                                }
+                                .tag(level.code)
+                            }
+                        }
+                    } else {
+                        // Fallback to legacy enum if service not available
+                        Picker("Seniority", selection: $seniority) {
+                            ForEach(Seniority.allCases) { level in
+                                Text(level.label).tag(level)
+                            }
+                        }
+                    }
+                    
+                    // Preview badge
+                    if let service = seniorityService,
+                       let level = service.level(byCode: selectedSeniorityCode) {
+                        HStack {
+                            Text("Badge Preview")
+                                .font(CFont.caption1)
+                                .foregroundStyle(CColor.neutral600)
+                            Spacer()
+                            TierBadge(level: level)
                         }
                     }
                 }
@@ -167,11 +197,20 @@ struct MemberForm: View {
     }
 
     private func loadInitialData() {
-        guard let member = memberToEdit else { return }
+        guard let member = memberToEdit else {
+            // New member - initialize with first level from service or default
+            if let service = seniorityService, let firstLevel = service.levels.first {
+                selectedSeniorityCode = firstLevel.code
+            } else {
+                selectedSeniorityCode = seniority.rawValue
+            }
+            return
+        }
 
         name = member.name
         role = member.role
         seniority = member.seniority
+        selectedSeniorityCode = member.seniority.rawValue
         photoUrl = member.photoUrl ?? ""
         photoData = member.photoData
         selectedMentorId = member.mentor?.id
@@ -212,7 +251,8 @@ struct MemberForm: View {
             // Update existing
             existing.name = validName
             existing.role = validRole
-            existing.seniority = seniority
+            // ✅ UPDATED: Use selectedSeniorityCode for custom levels
+            existing.seniorityRaw = selectedSeniorityCode
             existing.photoUrl = photoUrl.isEmpty ? nil : photoUrl
             existing.photoData = photoData
             existing.mentorName = externalMentorName.isEmpty ? nil : externalMentorName
@@ -227,12 +267,20 @@ struct MemberForm: View {
             store.updateMember(existing, in: context)
         } else {
             // Create new
+            // ✅ UPDATED: Map selectedSeniorityCode to Seniority enum or use default
+            let seniorityEnum = Seniority(rawValue: selectedSeniorityCode) ?? .t2_1
+            
             let newMember = TeamMember(
                 name: validName,
                 role: validRole,
-                seniority: seniority,
+                seniority: seniorityEnum,
                 photoUrl: photoUrl.isEmpty ? nil : photoUrl
             )
+            
+            // Override with custom code if different
+            if selectedSeniorityCode != seniorityEnum.rawValue {
+                newMember.seniorityRaw = selectedSeniorityCode
+            }
             
             newMember.photoData = photoData
             newMember.mentorName = externalMentorName.isEmpty ? nil : externalMentorName

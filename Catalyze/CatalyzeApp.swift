@@ -23,6 +23,9 @@ struct CatalyzeApp: App {
     private let container: ModelContainer
 
     @State private var store = AppStore()
+    
+    // ✅ ADDED: SeniorityService for customizable seniority levels
+    @State private var seniorityService: SeniorityService?
 
     init() {
         do {
@@ -70,6 +73,15 @@ struct CatalyzeApp: App {
         WindowGroup {
             AppLayout()
                 .environment(store)
+                .seniorityService(seniorityService ?? SeniorityService(modelContext: container.mainContext))
+                .onAppear {
+                    // Initialize SeniorityService on first launch
+                    if seniorityService == nil {
+                        seniorityService = SeniorityService(modelContext: container.mainContext)
+                        seniorityService?.ensureDefaultConfig()
+                        Logger.log("SeniorityService initialized", level: .info)
+                    }
+                }
         }
         .modelContainer(container)
     }
