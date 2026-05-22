@@ -137,11 +137,11 @@ struct TagSection: View {
     
     // Filter tags to only show behavioral categories (excluding technical)
     private var behavioralStrengths: [StrengthWeakness] {
-        member.strengths.filter { !BehavioralCategory.technicalCategories.contains($0.category) }
+        member.strengths.filter { !TechnicalCategory.all.contains($0.category) }
     }
     
     private var behavioralWeaknesses: [StrengthWeakness] {
-        member.weaknesses.filter { !BehavioralCategory.technicalCategories.contains($0.category) }
+        member.weaknesses.filter { !TechnicalCategory.all.contains($0.category) }
     }
     
     private func deleteTag(_ tag: StrengthWeakness) {
@@ -219,35 +219,6 @@ private struct TagRow: View {
     private var colorForKind: Color {
         tag.kind == .strength ? .green : .orange
     }
-}
-
-// MARK: - Behavioral Categories ----------------------------------------------
-
-enum BehavioralCategory {
-    // Technical categories that should NOT appear in behavioral section
-    static let technicalCategories: [String] = [
-        "Code Quality",
-        "Code Review",
-        "Testing",
-        "Architecture",
-        "DevOps",
-        "Infrastructure",
-        "Debugging",
-        "Observability"
-    ]
-    
-    // Behavioral categories (for reference/validation)
-    static let behavioralCategories: [String] = [
-        "Communication",
-        "Ownership",
-        "EQ", // Emotional Intelligence / Emotional Quotient
-        "Collaboration",
-        "Growth Mindset",
-        "Problem Solving",
-        "Leadership",
-        "Adaptability",
-        "Mentoring"
-    ]
 }
 
 // MARK: - Preview ------------------------------------------------------------

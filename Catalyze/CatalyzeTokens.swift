@@ -20,8 +20,13 @@ enum CColor {
     /// Cor principal da marca. Botões primários, ícone ativo na sidebar,
     /// seleção em segmented controls, links de ação.
     static let brandPrimary      = Color(hex: "#5B5BD6")
+    
     /// Versão clara para fundos sutis: tier badges, cards de info.
-    static let brandPrimaryLight = Color(hex: "#EEEEFF")
+    /// Adapta automaticamente ao dark mode.
+    static var brandPrimaryLight: Color {
+        Color(hex: "#EEEEFF").opacity(0.2)
+    }
+    
     /// Versão escura para estado pressionado de botões.
     static let brandPrimaryDark  = Color(hex: "#3D3DA7")
 
@@ -29,53 +34,87 @@ enum CColor {
     /// Forças, habilidades consolidadas, "Strongest", Expert.
     static let strength      = Color(hex: "#16A34A")
     /// Fundo do card "Strongest" e linhas de força.
-    static let strengthLight = Color(hex: "#DCFCE7")
+    /// Adapta automaticamente ao dark mode.
+    static var strengthLight: Color {
+        Color(hex: "#DCFCE7").opacity(0.3)
+    }
 
     // MARK: Semantic — Growth (amber)
     /// Áreas de crescimento, "Needs Focus", Emerging.
     static let growth      = Color(hex: "#D97706")
     /// Fundo do card "Needs Focus" e linhas de crescimento.
-    static let growthLight = Color(hex: "#FEF3C7")
+    /// Adapta automaticamente ao dark mode.
+    static var growthLight: Color {
+        Color(hex: "#FEF3C7").opacity(0.3)
+    }
 
     // MARK: Semantic — Info (blue)
     /// Informações neutras, estado Proficient.
     static let info      = Color(hex: "#2563EB")
     /// Fundo do stat card informativo (Team Size).
-    static let infoLight = Color(hex: "#DBEAFE")
+    /// Adapta automaticamente ao dark mode.
+    static var infoLight: Color {
+        Color(hex: "#DBEAFE").opacity(0.3)
+    }
 
     // MARK: Semantic — Destructive
     /// Botão Delete, ações irreversíveis.
     static let destructive      = Color(hex: "#DC2626")
-    static let destructiveLight = Color(hex: "#FEE2E2")
+    static var destructiveLight: Color {
+        Color(hex: "#FEE2E2").opacity(0.3)
+    }
 
     // MARK: Proficiency Scale
     // Escala de proficiência em tecnologia: Learning → Expert
     static let proficiencyLearning      = Color(hex: "#D97706")
-    static let proficiencyLearningLight = Color(hex: "#FEF3C7")
+    static var proficiencyLearningLight: Color {
+        Color(hex: "#FEF3C7").opacity(0.3)
+    }
     static let proficiencyProficient      = Color(hex: "#2563EB")
-    static let proficiencyProficientLight = Color(hex: "#DBEAFE")
+    static var proficiencyProficientLight: Color {
+        Color(hex: "#DBEAFE").opacity(0.3)
+    }
     static let proficiencyAdvanced      = Color(hex: "#7C3AED")
-    static let proficiencyAdvancedLight = Color(hex: "#EDE9FE")
+    static var proficiencyAdvancedLight: Color {
+        Color(hex: "#EDE9FE").opacity(0.3)
+    }
     static let proficiencyExpert      = Color(hex: "#16A34A")
-    static let proficiencyExpertLight = Color(hex: "#DCFCE7")
+    static var proficiencyExpertLight: Color {
+        Color(hex: "#DCFCE7").opacity(0.3)
+    }
 
     // MARK: Neutrals
     /// Branco puro — fundo de cards e modais.
-    static let neutral0   = Color(hex: "#FFFFFF")
+    /// Adapta automaticamente: branco no light, cinza escuro no dark.
+    static let neutral0   = Color(.systemBackground)
+    
     /// Fundo de página (quase branco).
-    static let neutral50  = Color(hex: "#F9FAFB")
+    /// Adapta automaticamente: cinza claro no light, preto no dark.
+    static let neutral50  = Color(.secondarySystemBackground)
+    
     /// Fundo de seções sutis e campos de formulário.
-    static let neutral100 = Color(hex: "#F3F4F6")
+    /// Adapta automaticamente para dark mode.
+    static let neutral100 = Color(.tertiarySystemBackground)
+    
     /// Bordas e separadores.
-    static let neutral200 = Color(hex: "#E5E7EB")
+    /// Adapta automaticamente para dark mode.
+    static let neutral200 = Color(.separator)
+    
     /// Texto terciário, placeholders, ícones desabilitados.
-    static let neutral400 = Color(hex: "#9CA3AF")
+    /// Adapta automaticamente para dark mode.
+    static let neutral400 = Color(.tertiaryLabel)
+    
     /// Texto secundário — subtítulos, labels, roles.
-    static let neutral600 = Color(hex: "#4B5563")
+    /// Adapta automaticamente para dark mode.
+    static let neutral600 = Color(.secondaryLabel)
+    
     /// Texto de conteúdo padrão — corpo de texto, chips.
-    static let neutral700 = Color(hex: "#374151")
+    /// Adapta automaticamente para dark mode.
+    static let neutral700 = Color(.label)
+    
     /// Texto primário — títulos, conteúdo principal.
-    static let neutral900 = Color(hex: "#111827")
+    /// Adapta automaticamente para dark mode.
+    static let neutral900 = Color(.label)
 }
 
 // MARK: - Typography
@@ -150,41 +189,54 @@ enum CRadius {
 // MARK: - Gradients
 
 /// Gradientes para backgrounds e destaques visuais.
+/// NOTA: Para usar gradientes adaptáveis ao dark mode, considere criar
+/// ViewModifiers que retornem gradientes dinâmicos baseados no @Environment(\.colorScheme).
 enum CGradient {
     /// Gradiente sutil de background para páginas
-    static let pageBackground = LinearGradient(
-        colors: [CColor.neutral50, CColor.neutral100.opacity(0.3)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    /// Adapta automaticamente ao dark mode
+    static var pageBackground: LinearGradient {
+        LinearGradient(
+            colors: [CColor.neutral50, CColor.neutral100.opacity(0.3)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     /// Gradiente para cards hero/destaque
-    static let heroCard = LinearGradient(
-        colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.8)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var heroCard: LinearGradient {
+        LinearGradient(
+            colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.8)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     /// Gradiente sutil para cards com hover
-    static let cardHover = LinearGradient(
-        colors: [CColor.neutral0, CColor.brandPrimaryLight.opacity(0.2)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var cardHover: LinearGradient {
+        LinearGradient(
+            colors: [CColor.neutral0, CColor.brandPrimaryLight.opacity(0.2)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
     
     /// Gradiente para stats/métricas positivas
-    static let success = LinearGradient(
-        colors: [CColor.strengthLight, CColor.strength.opacity(0.1)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var success: LinearGradient {
+        LinearGradient(
+            colors: [CColor.strengthLight, CColor.strength.opacity(0.1)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     /// Gradiente para growth/warning
-    static let growth = LinearGradient(
-        colors: [CColor.growthLight, CColor.growth.opacity(0.1)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var growth: LinearGradient {
+        LinearGradient(
+            colors: [CColor.growthLight, CColor.growth.opacity(0.1)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 }
 
 // MARK: - Shadows

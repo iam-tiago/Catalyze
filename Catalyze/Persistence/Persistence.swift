@@ -41,6 +41,11 @@ enum CatalyzeSchemaV1: VersionedSchema {
             PromotionReadiness.self,
             PromotionCriterion.self,
             ProfileEvent.self,
+            // ✅ ADDED: Seniority customization models
+            OrganizationConfig.self,
+            SeniorityLevel.self,
+            // ✅ ADDED: Tech stack customization
+            CustomStackTag.self,
         ]
     }
 }

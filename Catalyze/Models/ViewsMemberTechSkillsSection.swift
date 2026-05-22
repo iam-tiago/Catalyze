@@ -138,33 +138,17 @@ struct TechSkillsSection: View {
     
     // Filter tags to only show technical categories
     private var techStrengths: [StrengthWeakness] {
-        member.strengths.filter { TechSkillCategory.allCases.contains($0.category) }
+        member.strengths.filter { TechnicalCategory.all.contains($0.category) }
     }
     
     private var techWeaknesses: [StrengthWeakness] {
-        member.weaknesses.filter { TechSkillCategory.allCases.contains($0.category) }
+        member.weaknesses.filter { TechnicalCategory.all.contains($0.category) }
     }
     
     private func deleteTag(_ tag: StrengthWeakness) {
         context.delete(tag)
         try? context.save()
     }
-}
-
-// MARK: - Tech Skill Categories ----------------------------------------------
-
-enum TechSkillCategory {
-    static let allCases: [String] = [
-        "Language Mastery",
-        "Code Quality",
-        "Code Review",
-        "Testing",
-        "Architecture",
-        "DevOps",
-        "Debugging Logic",
-        "Observability",
-        "Security"
-    ]
 }
 
 // MARK: - Tech Skill Row -----------------------------------------------------
@@ -257,7 +241,7 @@ private struct TechSkillForm: View {
         self.kind = kind
         self.tagToEdit = tagToEdit
         
-        _selectedCategory = State(initialValue: tagToEdit?.category ?? TechSkillCategory.allCases[0])
+        _selectedCategory = State(initialValue: tagToEdit?.category ?? TechnicalCategory.all[0])
         _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? (kind == .strength ? .emerging : .emerging))
         _note = State(initialValue: tagToEdit?.note ?? "")
     }
@@ -267,7 +251,7 @@ private struct TechSkillForm: View {
             Form {
                 Section("Technical Skill Category") {
                     Picker("Category", selection: $selectedCategory) {
-                        ForEach(TechSkillCategory.allCases, id: \.self) { category in
+                        ForEach(TechnicalCategory.all, id: \.self) { category in
                             Text(category).tag(category)
                         }
                     }

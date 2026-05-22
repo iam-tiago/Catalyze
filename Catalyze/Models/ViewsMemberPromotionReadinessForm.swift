@@ -16,11 +16,13 @@ struct PromotionReadinessForm: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.seniorityService) private var seniorityService
 
     let member: TeamMember
     let recordToEdit: PromotionReadiness?
 
     @State private var targetTier: Seniority = .t2_2
+    @State private var selectedTargetCode: String = ""
     @State private var status: PromotionStatus = .notReady
     @State private var criteria: [CriterionFormData] = []
     @State private var aiAssessment = ""
@@ -31,14 +33,95 @@ struct PromotionReadinessForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Target tier section
-                Section("Target Promotion Level") {
-                    Picker("Target Tier", selection: $targetTier) {
-                        ForEach(higherSeniorities, id: \.self) { tier in
-                            Text(tier.label).tag(tier)
+                // Current level display
+                Section("Current Level") {
+                    HStack {
+                        Text(member.name)
+                            .font(CFont.headline)
+                        Spacer()
+                        if let service = seniorityService,
+                           let currentLevel = service.level(byCode: member.seniority.rawValue) {
+                            TierBadge(level: currentLevel)
+                        } else {
+                            TierBadge(tier: member.seniority.rawValue)
                         }
                     }
-                    .pickerStyle(.menu)
+                    
+                    if let service = seniorityService,
+                       let currentLevel = service.level(byCode: member.seniority.rawValue) {
+                        Text(currentLevel.displayName)
+                            .font(CFont.subheadline)
+                            .foregroundStyle(CColor.neutral600)
+                    }
+                }
+                
+                // Target tier section with suggestions
+                Section {
+                    // ✅ UPDATED: Picker with custom levels
+                    if let service = seniorityService {
+                        let higherLevels = service.higherLevels(than: member.seniority.rawValue)
+                        
+                        if !higherLevels.isEmpty {
+                            Picker("Target Level", selection: $selectedTargetCode) {
+                                ForEach(higherLevels, id: \.code) { level in
+                                    HStack {
+                                        Circle()
+                                            .fill(level.color)
+                                            .frame(width: 8, height: 8)
+                                        Text(level.displayName)
+                                    }
+                                    .tag(level.code)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            
+                            // Show description of selected level
+                            if let selectedLevel = service.level(byCode: selectedTargetCode),
+                               let description = selectedLevel.levelDescription {
+                                Text(description)
+                                    .font(CFont.caption1)
+                                    .foregroundStyle(CColor.neutral600)
+                                    .padding(.top, CSpace.xs)
+                            }
+                            
+                            // Suggested next level
+                            if let nextLevel = service.nextLevel(after: member.seniority.rawValue),
+                               nextLevel.code != selectedTargetCode {
+                                HStack(spacing: CSpace.sm) {
+                                    Image(systemName: "lightbulb.fill")
+                                        .foregroundStyle(CColor.growth)
+                                        .font(.system(size: 12))
+                                    Text("Suggested: \(nextLevel.displayName)")
+                                        .font(CFont.caption1)
+                                        .foregroundStyle(CColor.neutral700)
+                                    Spacer()
+                                    Button("Use") {
+                                        selectedTargetCode = nextLevel.code
+                                    }
+                                    .font(CFont.caption2)
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                                .padding(.top, CSpace.xs)
+                            }
+                        } else {
+                            Text("No higher levels available")
+                                .foregroundStyle(CColor.neutral600)
+                                .font(CFont.callout)
+                        }
+                    } else {
+                        // Fallback to legacy enum
+                        Picker("Target Tier", selection: $targetTier) {
+                            ForEach(higherSeniorities, id: \.self) { tier in
+                                Text(tier.label).tag(tier)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                } header: {
+                    Text("Target Promotion Level")
+                } footer: {
+                    Text("Select the level you're preparing this member for.")
                 }
 
                 // Status section
@@ -211,9 +294,20 @@ struct PromotionReadinessForm: View {
     private func loadInitialData() {
         guard let record = recordToEdit else {
             // New record — set default target to next level
-            if let currentIndex = Seniority.allCases.firstIndex(of: member.seniority),
-               currentIndex + 1 < Seniority.allCases.count {
-                targetTier = Seniority.allCases[currentIndex + 1]
+            if let service = seniorityService {
+                // Use custom levels
+                if let nextLevel = service.nextLevel(after: member.seniority.rawValue) {
+                    selectedTargetCode = nextLevel.code
+                } else if let firstHigher = service.higherLevels(than: member.seniority.rawValue).first {
+                    selectedTargetCode = firstHigher.code
+                }
+            } else {
+                // Fallback to enum
+                if let currentIndex = Seniority.allCases.firstIndex(of: member.seniority),
+                   currentIndex + 1 < Seniority.allCases.count {
+                    targetTier = Seniority.allCases[currentIndex + 1]
+                    selectedTargetCode = targetTier.rawValue
+                }
             }
 
             // Add default criteria
@@ -239,6 +333,7 @@ struct PromotionReadinessForm: View {
 
         // Editing existing record
         targetTier = record.targetTier
+        selectedTargetCode = record.targetTierRaw
         status = record.status
         aiAssessment = record.aiAssessment ?? ""
         notes = record.notes ?? ""
@@ -348,7 +443,8 @@ struct PromotionReadinessForm: View {
 
         if let existing = recordToEdit {
             // Update existing
-            existing.targetTier = targetTier
+            // ✅ UPDATED: Use selectedTargetCode for custom levels
+            existing.targetTierRaw = selectedTargetCode
             existing.status = status
             existing.aiAssessment = aiAssessment.isEmpty ? nil : aiAssessment
             existing.notes = notes.isEmpty ? nil : notes
@@ -381,13 +477,21 @@ struct PromotionReadinessForm: View {
             store.updatePromotionReadiness(existing, in: context)
         } else {
             // Create new
+            // ✅ UPDATED: Map selectedTargetCode to Seniority enum or use default
+            let targetEnum = Seniority(rawValue: selectedTargetCode) ?? .t2_2
+            
             let newRecord = PromotionReadiness(
                 memberId: member.id,
-                targetTier: targetTier,
+                targetTier: targetEnum,
                 status: status,
                 aiAssessment: aiAssessment.isEmpty ? nil : aiAssessment,
                 notes: notes.isEmpty ? nil : notes
             )
+            
+            // Override with custom code if different
+            if selectedTargetCode != targetEnum.rawValue {
+                newRecord.targetTierRaw = selectedTargetCode
+            }
 
             newRecord.member = member
 
