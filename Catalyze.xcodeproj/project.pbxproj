@@ -24,9 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		38ACEB822FA7F71A006940FC /* Catalyze.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = Catalyze.app; path = "/Users/tiagocanabarro/Documents/Git/Catalyze/build/Debug-iphoneos/Catalyze.app"; sourceTree = "<absolute>"; };
-		38ACEB8F2FA7F71B006940FC /* CatalyzeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = CatalyzeTests.xctest; path = "/Users/tiagocanabarro/Documents/Git/Catalyze/build/Debug-iphoneos/Catalyze.app/PlugIns/CatalyzeTests.xctest"; sourceTree = "<absolute>"; };
-		38ACEB992FA7F71B006940FC /* CatalyzeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = CatalyzeUITests.xctest; path = "/Users/tiagocanabarro/Documents/Git/Catalyze/build/Debug-iphoneos/CatalyzeUITests-Runner.app/PlugIns/CatalyzeUITests.xctest"; sourceTree = "<absolute>"; };
+		38ACEB822FA7F71A006940FC /* Catalyze.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Catalyze.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38ACEB8F2FA7F71B006940FC /* CatalyzeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatalyzeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38ACEB992FA7F71B006940FC /* CatalyzeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatalyzeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -40,11 +40,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		3836A7962FBE82A700B4CBD2 /* Documentation */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Documentation;
-			sourceTree = "<group>";
-		};
 		38ACEB842FA7F71A006940FC /* Catalyze */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -93,11 +88,21 @@
 		38ACEB792FA7F71A006940FC = {
 			isa = PBXGroup;
 			children = (
-				3836A7962FBE82A700B4CBD2 /* Documentation */,
 				38ACEB842FA7F71A006940FC /* Catalyze */,
 				38ACEB922FA7F71B006940FC /* CatalyzeTests */,
 				38ACEB9C2FA7F71B006940FC /* CatalyzeUITests */,
+				38ACEB832FA7F71A006940FC /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		38ACEB832FA7F71A006940FC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				38ACEB822FA7F71A006940FC /* Catalyze.app */,
+				38ACEB8F2FA7F71B006940FC /* CatalyzeTests.xctest */,
+				38ACEB992FA7F71B006940FC /* CatalyzeUITests.xctest */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -116,7 +121,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				3836A7962FBE82A700B4CBD2 /* Documentation */,
 				38ACEB842FA7F71A006940FC /* Catalyze */,
 			);
 			name = Catalyze;
@@ -205,7 +209,7 @@
 			mainGroup = 38ACEB792FA7F71A006940FC;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 38ACEB792FA7F71A006940FC;
+			productRefGroup = 38ACEB832FA7F71A006940FC /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
