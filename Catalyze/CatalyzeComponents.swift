@@ -353,6 +353,7 @@ struct InsightSummaryCard: View {
 ///     name: "Alice Chen",
 ///     role: "Senior iOS Engineer",
 ///     tier: "T3-1",
+///     seniorityColor: .purple,  // Cor baseada na seniority
 ///     topStrengths: [
 ///         ("Mentoring", .solid),
 ///         ("SwiftUI", .strong)
@@ -363,6 +364,7 @@ struct MemberCard: View {
     let name: String
     let role: String
     let tier: String
+    var seniorityColor: Color = CColor.brandPrimary  // Default color
     let topStrengths: [(name: String, intensity: SkillIntensity)]
 
     var body: some View {
@@ -412,11 +414,11 @@ struct MemberCard: View {
     private var avatarView: some View {
         ZStack {
             Circle()
-                .fill(CColor.brandPrimaryLight)
+                .fill(seniorityColor.opacity(0.15))
                 .frame(width: 44, height: 44)
             Image(systemName: "person.fill")
                 .font(.system(size: 22))
-                .foregroundStyle(CColor.brandPrimary)
+                .foregroundStyle(seniorityColor)
         }
     }
 }
@@ -729,15 +731,39 @@ struct SeniorityLevelRow: View {
 }
 
 #Preview("MemberCard") {
-    MemberCard(
-        name: "Alice Chen",
-        role: "Senior iOS Engineer",
-        tier: "T3-1",
-        topStrengths: [
-            ("Mentoring", .solid),
-            ("SwiftUI", .strong)
-        ]
-    )
+    VStack(spacing: CSpace.md) {
+        // T3 Senior (Purple)
+        MemberCard(
+            name: "Alice Chen",
+            role: "Senior iOS Engineer",
+            tier: "T3-1",
+            seniorityColor: .purple,
+            topStrengths: [
+                ("Mentoring", .solid),
+                ("SwiftUI", .strong)
+            ]
+        )
+        
+        // T2 Specialist (Blue)
+        MemberCard(
+            name: "Bob Silva",
+            role: "iOS Engineer",
+            tier: "T2-2",
+            seniorityColor: .blue,
+            topStrengths: [
+                ("Problem Solving", .emerging)
+            ]
+        )
+        
+        // T1 Associate (Orange)
+        MemberCard(
+            name: "Carol Lin",
+            role: "Junior Engineer",
+            tier: "T1-3",
+            seniorityColor: .orange,
+            topStrengths: []
+        )
+    }
     .padding()
     .background(CColor.neutral50)
 }

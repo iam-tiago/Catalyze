@@ -214,7 +214,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T1-3",
                     displayName: "Associate Engineer",
                     order: 10,
-                    colorHex: "#94A3B8",
+                    colorHex: "#F97316",  // Orange - Associate
                     category: "Associate",
                     levelDescription: "Entry level engineer building foundational skills"
                 ),
@@ -222,7 +222,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T2-1",
                     displayName: "Specialist I",
                     order: 20,
-                    colorHex: "#3B82F6",
+                    colorHex: "#3B82F6",  // Blue - Specialist
                     category: "Specialist",
                     levelDescription: "Specialist level with growing autonomy"
                 ),
@@ -230,7 +230,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T2-2",
                     displayName: "Specialist II",
                     order: 30,
-                    colorHex: "#2563EB",
+                    colorHex: "#3B82F6",  // Blue - Specialist
                     category: "Specialist",
                     levelDescription: "Solid specialist with team influence"
                 ),
@@ -238,7 +238,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T2-3",
                     displayName: "Specialist III",
                     order: 40,
-                    colorHex: "#1D4ED8",
+                    colorHex: "#3B82F6",  // Blue - Specialist
                     category: "Specialist",
                     levelDescription: "Strong specialist ready for Senior track"
                 ),
@@ -246,7 +246,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T3-1",
                     displayName: "Senior I",
                     order: 50,
-                    colorHex: "#7C3AED",
+                    colorHex: "#8B5CF6",  // Purple - Senior
                     category: "Senior",
                     levelDescription: "Senior level with cross-team impact"
                 ),
@@ -254,7 +254,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T3-2",
                     displayName: "Senior II",
                     order: 60,
-                    colorHex: "#6D28D9",
+                    colorHex: "#8B5CF6",  // Purple - Senior
                     category: "Senior",
                     levelDescription: "Advanced Senior with org-level influence"
                 ),
@@ -262,7 +262,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T3-3",
                     displayName: "Senior III (Principal)",
                     order: 70,
-                    colorHex: "#5B21B6",
+                    colorHex: "#8B5CF6",  // Purple - Senior
                     category: "Senior",
                     levelDescription: "Principal level with company-wide impact"
                 ),
@@ -270,7 +270,7 @@ enum SeniorityPreset: String, Codable, CaseIterable, Identifiable {
                     code: "T4",
                     displayName: "Expert (Distinguished)",
                     order: 80,
-                    colorHex: "#4C1D95",
+                    colorHex: "#10B981",  // Green - Expert
                     category: "Expert",
                     levelDescription: "Highest technical level - industry influence"
                 )
@@ -487,7 +487,7 @@ extension Seniority {
                 code: "T1-3",
                 displayName: "Associate Engineer",
                 order: 10,
-                colorHex: "#94A3B8",
+                colorHex: "#F97316",  // Orange - Associate
                 category: "Associate"
             )
         case .t2_1:
@@ -495,7 +495,7 @@ extension Seniority {
                 code: "T2-1",
                 displayName: "Specialist I",
                 order: 20,
-                colorHex: "#3B82F6",
+                colorHex: "#3B82F6",  // Blue - Specialist
                 category: "Specialist"
             )
         case .t2_2:
@@ -503,7 +503,7 @@ extension Seniority {
                 code: "T2-2",
                 displayName: "Specialist II",
                 order: 30,
-                colorHex: "#2563EB",
+                colorHex: "#3B82F6",  // Blue - Specialist
                 category: "Specialist"
             )
         case .t2_3:
@@ -511,7 +511,7 @@ extension Seniority {
                 code: "T2-3",
                 displayName: "Specialist III",
                 order: 40,
-                colorHex: "#1D4ED8",
+                colorHex: "#3B82F6",  // Blue - Specialist
                 category: "Specialist"
             )
         case .t3_1:
@@ -519,7 +519,7 @@ extension Seniority {
                 code: "T3-1",
                 displayName: "Senior I",
                 order: 50,
-                colorHex: "#7C3AED",
+                colorHex: "#8B5CF6",  // Purple - Senior
                 category: "Senior"
             )
         case .t3_2:
@@ -527,7 +527,7 @@ extension Seniority {
                 code: "T3-2",
                 displayName: "Senior II",
                 order: 60,
-                colorHex: "#6D28D9",
+                colorHex: "#8B5CF6",  // Purple - Senior
                 category: "Senior"
             )
         case .t3_3:
@@ -535,7 +535,7 @@ extension Seniority {
                 code: "T3-3",
                 displayName: "Senior III (Principal)",
                 order: 70,
-                colorHex: "#5B21B6",
+                colorHex: "#8B5CF6",  // Purple - Senior
                 category: "Senior"
             )
         case .t4:
@@ -543,7 +543,7 @@ extension Seniority {
                 code: "T4",
                 displayName: "Expert (Distinguished)",
                 order: 80,
-                colorHex: "#4C1D95",
+                colorHex: "#10B981",  // Green - Expert
                 category: "Expert"
             )
         }
