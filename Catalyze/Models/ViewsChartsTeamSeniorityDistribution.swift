@@ -84,12 +84,12 @@ struct TeamSeniorityDistribution: View {
     }
     
     private func colorForSeniority(_ seniority: Seniority) -> Color {
-        // Use same color scheme as tech stack (green for senior, orange for junior)
+        // Color scheme aligned with seniority categories
         switch seniority {
-        case .t4:          return .green    // Expert equivalent
-        case .t3_3, .t3_2: return .purple   // Advanced equivalent
-        case .t3_1, .t2_3: return .blue     // Proficient equivalent
-        case .t2_2, .t2_1, .t1_3: return .orange  // Learning equivalent
+        case .t4:                return .green   // Expert
+        case .t3_3, .t3_2, .t3_1: return .purple  // Senior
+        case .t2_3, .t2_2, .t2_1: return .blue    // Specialist
+        case .t1_3:              return .orange  // Associate
         }
     }
 }
@@ -109,19 +109,19 @@ private struct TeamSeniorityDistributionRow: View {
     
     private var color: Color {
         switch data.seniority {
-        case .t4:          return .green
-        case .t3_3, .t3_2: return .purple
-        case .t3_1, .t2_3: return .blue
-        case .t2_2, .t2_1, .t1_3: return .orange
+        case .t4:                return .green   // Expert
+        case .t3_3, .t3_2, .t3_1: return .purple  // Senior
+        case .t2_3, .t2_2, .t2_1: return .blue    // Specialist
+        case .t1_3:              return .orange  // Associate
         }
     }
     
     private var levelLabel: String {
         switch data.seniority {
-        case .t4:          return "Staff"
-        case .t3_3, .t3_2: return "Senior (Senior)"
-        case .t3_1, .t2_3: return "Senior"
-        case .t2_2, .t2_1, .t1_3: return "Junior/Mid"
+        case .t4:                return "Expert"
+        case .t3_3, .t3_2, .t3_1: return "Senior"
+        case .t2_3, .t2_2, .t2_1: return "Specialist"
+        case .t1_3:              return "Associate"
         }
     }
     
