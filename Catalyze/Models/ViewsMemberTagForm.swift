@@ -32,7 +32,11 @@ struct TagForm: View {
                 Section("Category") {
                     Picker("Select category", selection: $category) {
                         ForEach(BehavioralCategory.all, id: \.self) { cat in
-                            Text(cat).tag(cat)
+                            HStack {
+                                Image(systemName: iconForBehavioralCategory(cat))
+                                Text(cat)
+                            }
+                            .tag(cat)
                         }
 
                         Text("Custom…").tag("__custom__")
@@ -43,29 +47,88 @@ struct TagForm: View {
                         TextField("Custom category", text: $customCategory)
                             .textInputAutocapitalization(.words)
                     }
+                    
+                    // Category preview with icon (only for predefined categories)
+                    if category != "__custom__" && !category.isEmpty {
+                        HStack {
+                            ZStack {
+                                Circle()
+                                    .fill(colorForIntensity(intensity, kind: kind).opacity(0.15))
+                                    .frame(width: 40, height: 40)
+                                
+                                Image(systemName: iconForBehavioralCategory(category))
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(colorForIntensity(intensity, kind: kind))
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(category)
+                                    .font(.body.weight(.medium))
+                                
+                                Text(kind == .strength ? "Strength" : "Growth Area")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
 
                 // Intensity section
-                Section("Intensity") {
-                    Picker("Intensity", selection: $intensity) {
-                        ForEach(validIntensities, id: \.self) { level in
+                Section("Intensity Level") {
+                    ForEach(validIntensities, id: \.self) { level in
+                        Button {
+                            intensity = level
+                        } label: {
                             HStack {
-                                // Visual indicator
-                                HStack(spacing: 2) {
-                                    ForEach(0..<dotCount(for: level), id: \.self) { _ in
-                                        Circle()
-                                            .fill(kind == .strength ? Color.green : Color.orange)
-                                            .frame(width: 6, height: 6)
+                                Text(level.rawValue)
+                                    .foregroundStyle(.primary)
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    // Dots indicator
+                                    HStack(spacing: 3) {
+                                        ForEach(0..<3, id: \.self) { index in
+                                            Circle()
+                                                .fill(index < dotCount(for: level) ? colorForIntensity(level, kind: kind) : Color.secondary.opacity(0.2))
+                                                .frame(width: 6, height: 6)
+                                        }
+                                    }
+                                    
+                                    if intensity == level {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(colorForIntensity(level, kind: kind))
+                                            .font(.body.weight(.semibold))
                                     }
                                 }
-                                .frame(width: 30, alignment: .leading)
-
-                                Text(level.rawValue)
                             }
-                            .tag(level)
                         }
                     }
-                    .pickerStyle(.segmented)
+                }
+                
+                // About This Level section
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: iconForIntensity(intensity))
+                                .foregroundStyle(colorForIntensity(intensity, kind: kind))
+                                .font(.title3)
+                            
+                            Text(intensity.rawValue)
+                                .font(.headline)
+                                .foregroundStyle(colorForIntensity(intensity, kind: kind))
+                        }
+                        
+                        Text(descriptionForIntensity(intensity, kind: kind))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } header: {
+                    Text("About This Level")
                 }
 
                 // Note section
@@ -120,10 +183,44 @@ struct TagForm: View {
     }
 
     private func dotCount(for intensity: Intensity) -> Int {
-        switch intensity {
-        case .emerging:   return 1
-        case .solid, .developing:      return 2
-        case .strong, .blocking:     return 3
+        intensity.dotCount
+    }
+    
+    private func iconForBehavioralCategory(_ category: String) -> String {
+        BehavioralCategory.icon(for: category)
+    }
+    
+    private func colorForIntensity(_ intensity: Intensity, kind: SWKind) -> Color {
+        intensity.color(for: kind)
+    }
+    
+    private func iconForIntensity(_ intensity: Intensity) -> String {
+        intensity.icon
+    }
+    
+    private func descriptionForIntensity(_ intensity: Intensity, kind: SWKind) -> String {
+        if kind == .strength {
+            switch intensity {
+            case .emerging:
+                return "Shows promise; occasional good examples"
+            case .solid:
+                return "Consistent; reliable in this area"
+            case .strong:
+                return "Outstanding; models excellence for others"
+            default:
+                return ""
+            }
+        } else {
+            switch intensity {
+            case .emerging:
+                return "Early stage; needs active development"
+            case .developing:
+                return "Progressing but still affecting work quality"
+            case .blocking:
+                return "Critical gap; prevents higher-level responsibilities"
+            default:
+                return ""
+            }
         }
     }
 

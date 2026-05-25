@@ -138,13 +138,11 @@ struct TechSkillsSection: View {
     
     // Filter tags to only show technical categories
     private var techStrengths: [StrengthWeakness] {
-        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
-        return member.strengths.filter { technicalCategories.contains($0.category) }
+        member.strengths.filter { TechnicalCategory.all.contains($0.category) }
     }
     
     private var techWeaknesses: [StrengthWeakness] {
-        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
-        return member.weaknesses.filter { technicalCategories.contains($0.category) }
+        member.weaknesses.filter { TechnicalCategory.all.contains($0.category) }
     }
     
     private func deleteTag(_ tag: StrengthWeakness) {
@@ -243,14 +241,9 @@ private struct TechSkillForm: View {
         self.kind = kind
         self.tagToEdit = tagToEdit
         
-        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
-        _selectedCategory = State(initialValue: tagToEdit?.category ?? technicalCategories[0])
+        _selectedCategory = State(initialValue: tagToEdit?.category ?? TechnicalCategory.all[0])
         _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? .emerging)
         _note = State(initialValue: tagToEdit?.note ?? "")
-    }
-    
-    private var technicalCategories: [String] {
-        ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
     }
     
     private var validIntensities: [Intensity] {
@@ -262,25 +255,98 @@ private struct TechSkillForm: View {
             Form {
                 Section("Category") {
                     Picker("Category", selection: $selectedCategory) {
-                        ForEach(technicalCategories, id: \.self) { category in
-                            Text(category).tag(category)
+                        ForEach(TechnicalCategory.all, id: \.self) { category in
+                            HStack {
+                                Image(systemName: TechnicalCategory.icon(for: category))
+                                Text(category)
+                            }
+                            .tag(category)
                         }
                     }
                     .pickerStyle(.menu)
+                    
+                    // Category preview with icon
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(selectedIntensity.color(for: kind).opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            
+                            Image(systemName: TechnicalCategory.icon(for: selectedCategory))
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(selectedIntensity.color(for: kind))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selectedCategory)
+                                .font(.body.weight(.medium))
+                            
+                            Text(kind == .strength ? "Technical Strength" : "Technical Growth Area")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
                 }
                 
-                Section("Intensity") {
-                    Picker("Select Intensity", selection: $selectedIntensity) {
-                        ForEach(validIntensities, id: \.self) { intensity in
-                            Text(intensity.rawValue).tag(intensity)
+                Section("Intensity Level") {
+                    ForEach(validIntensities, id: \.self) { intensity in
+                        Button {
+                            selectedIntensity = intensity
+                        } label: {
+                            HStack {
+                                Text(intensity.rawValue)
+                                    .foregroundStyle(.primary)
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    // Dots indicator
+                                    HStack(spacing: 3) {
+                                        ForEach(0..<3, id: \.self) { index in
+                                            Circle()
+                                                .fill(index < intensity.dotCount ? intensity.color(for: kind) : Color.secondary.opacity(0.2))
+                                                .frame(width: 6, height: 6)
+                                        }
+                                    }
+                                    
+                                    if selectedIntensity == intensity {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(intensity.color(for: kind))
+                                            .font(.body.weight(.semibold))
+                                    }
+                                }
+                            }
                         }
                     }
-                    .pickerStyle(.segmented)
+                }
+                
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: selectedIntensity.icon)
+                                .foregroundStyle(selectedIntensity.color(for: kind))
+                                .font(.title3)
+                            
+                            Text(selectedIntensity.rawValue)
+                                .font(.headline)
+                                .foregroundStyle(selectedIntensity.color(for: kind))
+                        }
+                        
+                        Text(descriptionForTechIntensity(selectedIntensity, kind: kind))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } header: {
+                    Text("About This Level")
                 }
                 
                 Section("Notes (Optional)") {
                     TextEditor(text: $note)
-                        .frame(minHeight: 100)
+                        .frame(minHeight: 80)
                 }
             }
             .navigationTitle(isEditing ? "Edit \(kind == .strength ? "Tech Strength" : "Tech Growth Area")" : "Add \(kind == .strength ? "Tech Strength" : "Tech Growth Area")")
@@ -332,6 +398,84 @@ private struct TechSkillForm: View {
         
         try? context.save()
         dismiss()
+    }
+    
+    private func descriptionForTechIntensity(_ intensity: Intensity, kind: SWKind) -> String {
+        if kind == .strength {
+            switch intensity {
+            case .emerging:
+                return "Shows promise; occasional good examples in this technical area"
+            case .solid:
+                return "Consistent; reliable technical capability"
+            case .strong:
+                return "Outstanding; models technical excellence for others"
+            default:
+                return ""
+            }
+        } else {
+            switch intensity {
+            case .emerging:
+                return "Early stage technical gap; needs active development"
+            case .developing:
+                return "Progressing but still affecting technical output quality"
+            case .blocking:
+                return "Critical technical gap; prevents higher-level responsibilities"
+            default:
+                return ""
+            }
+        }
+    }
+}
+
+// MARK: - Tech Intensity Description Card ------------------------------------
+
+private struct TechIntensityDescriptionCard: View {
+    let intensity: Intensity
+    let kind: SWKind
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: intensity.icon)
+                    .foregroundStyle(intensity.color(for: kind))
+                    .font(.title3)
+                
+                Text(intensity.rawValue)
+                    .font(.headline)
+                    .foregroundStyle(intensity.color(for: kind))
+            }
+            
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var description: String {
+        if kind == .strength {
+            switch intensity {
+            case .emerging:
+                return "Shows promise; occasional good examples in this technical area"
+            case .solid:
+                return "Consistent; reliable technical capability"
+            case .strong:
+                return "Outstanding; models technical excellence for others"
+            default:
+                return ""
+            }
+        } else {
+            switch intensity {
+            case .emerging:
+                return "Early stage technical gap; needs active development"
+            case .developing:
+                return "Progressing but still affecting technical output quality"
+            case .blocking:
+                return "Critical technical gap; prevents higher-level responsibilities"
+            default:
+                return ""
+            }
+        }
     }
 }
 
