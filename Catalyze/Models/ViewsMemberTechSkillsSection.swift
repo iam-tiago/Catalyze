@@ -242,72 +242,114 @@ private struct TechSkillForm: View {
         self.tagToEdit = tagToEdit
         
         _selectedCategory = State(initialValue: tagToEdit?.category ?? TechnicalCategory.all[0])
-        _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? (kind == .strength ? .emerging : .emerging))
+        _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? .emerging)
         _note = State(initialValue: tagToEdit?.note ?? "")
+    }
+    
+    private var validIntensities: [Intensity] {
+        kind == .strength ? Intensity.strengthCases : Intensity.weaknessCases
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("Technical Skill Category") {
+                Section("Category") {
                     Picker("Category", selection: $selectedCategory) {
                         ForEach(TechnicalCategory.all, id: \.self) { category in
-                            Text(category).tag(category)
+                            HStack {
+                                Image(systemName: TechnicalCategory.icon(for: category))
+                                Text(category)
+                            }
+                            .tag(category)
                         }
                     }
                     .pickerStyle(.menu)
+                    
+                    // Category preview with icon
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(selectedIntensity.color(for: kind).opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            
+                            Image(systemName: TechnicalCategory.icon(for: selectedCategory))
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(selectedIntensity.color(for: kind))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selectedCategory)
+                                .font(.body.weight(.medium))
+                            
+                            Text(kind == .strength ? "Technical Strength" : "Technical Growth Area")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
                 }
                 
-                Section("Intensity") {
-                    Picker("Select Intensity", selection: $selectedIntensity) {
-                        ForEach(validIntensities, id: \.self) { intensity in
-                            Text(intensity.rawValue).tag(intensity)
+                Section("Intensity Level") {
+                    ForEach(validIntensities, id: \.self) { intensity in
+                        Button {
+                            selectedIntensity = intensity
+                        } label: {
+                            HStack {
+                                Text(intensity.rawValue)
+                                    .foregroundStyle(.primary)
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    // Dots indicator
+                                    HStack(spacing: 3) {
+                                        ForEach(0..<3, id: \.self) { index in
+                                            Circle()
+                                                .fill(index < intensity.dotCount ? intensity.color(for: kind) : Color.secondary.opacity(0.2))
+                                                .frame(width: 6, height: 6)
+                                        }
+                                    }
+                                    
+                                    if selectedIntensity == intensity {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(intensity.color(for: kind))
+                                            .font(.body.weight(.semibold))
+                                    }
+                                }
+                            }
                         }
                     }
-                    .pickerStyle(.segmented)
-                    
-                    Text(intensityDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Section("Notes (Optional)") {
-                    TextEditor(text: $note)
-                        .frame(minHeight: 100)
                 }
                 
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Intensity Guide")
-                            .font(.subheadline.weight(.semibold))
-                        
-                        if kind == .strength {
-                            ForEach(Intensity.strengthCases, id: \.self) { intensity in
-                                HStack(alignment: .top) {
-                                    Text(intensity.rawValue)
-                                        .font(.caption.weight(.medium))
-                                        .frame(width: 80, alignment: .leading)
-                                    Text(strengthDescription(intensity))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        } else {
-                            ForEach(Intensity.weaknessCases, id: \.self) { intensity in
-                                HStack(alignment: .top) {
-                                    Text(intensity.rawValue)
-                                        .font(.caption.weight(.medium))
-                                        .frame(width: 80, alignment: .leading)
-                                    Text(weaknessDescription(intensity))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
+                        HStack {
+                            Image(systemName: selectedIntensity.icon)
+                                .foregroundStyle(selectedIntensity.color(for: kind))
+                                .font(.title3)
+                            
+                            Text(selectedIntensity.rawValue)
+                                .font(.headline)
+                                .foregroundStyle(selectedIntensity.color(for: kind))
                         }
+                        
+                        Text(descriptionForTechIntensity(selectedIntensity, kind: kind))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } header: {
+                    Text("About This Level")
+                }
+                
+                Section("Notes (Optional)") {
+                    TextEditor(text: $note)
+                        .frame(minHeight: 80)
                 }
             }
-            .navigationTitle(title)
+            .navigationTitle(isEditing ? "Edit \(kind == .strength ? "Tech Strength" : "Tech Growth Area")" : "Add \(kind == .strength ? "Tech Strength" : "Tech Growth Area")")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -317,7 +359,7 @@ private struct TechSkillForm: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(tagToEdit != nil ? "Save" : "Add") {
+                    Button(isEditing ? "Save" : "Add") {
                         save()
                     }
                 }
@@ -325,40 +367,8 @@ private struct TechSkillForm: View {
         }
     }
     
-    private var title: String {
-        let action = tagToEdit != nil ? "Edit" : "Add"
-        let type = kind == .strength ? "Tech Strength" : "Tech Growth Area"
-        return "\(action) \(type)"
-    }
-    
-    private var validIntensities: [Intensity] {
-        kind == .strength ? Intensity.strengthCases : Intensity.weaknessCases
-    }
-    
-    private var intensityDescription: String {
-        if kind == .strength {
-            return strengthDescription(selectedIntensity)
-        } else {
-            return weaknessDescription(selectedIntensity)
-        }
-    }
-    
-    private func strengthDescription(_ intensity: Intensity) -> String {
-        switch intensity {
-        case .emerging: return "Shows promise; occasional good examples"
-        case .solid:    return "Consistent; reliable in this area"
-        case .strong:   return "Outstanding; models excellence for others"
-        default:        return ""
-        }
-    }
-    
-    private func weaknessDescription(_ intensity: Intensity) -> String {
-        switch intensity {
-        case .emerging:   return "Early stage; needs active development"
-        case .developing: return "Progressing but still affecting work quality"
-        case .blocking:   return "Critical gap; prevents higher-level responsibilities"
-        default:          return ""
-        }
+    private var isEditing: Bool {
+        tagToEdit != nil
     }
     
     private func save() {
@@ -388,6 +398,84 @@ private struct TechSkillForm: View {
         
         try? context.save()
         dismiss()
+    }
+    
+    private func descriptionForTechIntensity(_ intensity: Intensity, kind: SWKind) -> String {
+        if kind == .strength {
+            switch intensity {
+            case .emerging:
+                return "Shows promise; occasional good examples in this technical area"
+            case .solid:
+                return "Consistent; reliable technical capability"
+            case .strong:
+                return "Outstanding; models technical excellence for others"
+            default:
+                return ""
+            }
+        } else {
+            switch intensity {
+            case .emerging:
+                return "Early stage technical gap; needs active development"
+            case .developing:
+                return "Progressing but still affecting technical output quality"
+            case .blocking:
+                return "Critical technical gap; prevents higher-level responsibilities"
+            default:
+                return ""
+            }
+        }
+    }
+}
+
+// MARK: - Tech Intensity Description Card ------------------------------------
+
+private struct TechIntensityDescriptionCard: View {
+    let intensity: Intensity
+    let kind: SWKind
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: intensity.icon)
+                    .foregroundStyle(intensity.color(for: kind))
+                    .font(.title3)
+                
+                Text(intensity.rawValue)
+                    .font(.headline)
+                    .foregroundStyle(intensity.color(for: kind))
+            }
+            
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var description: String {
+        if kind == .strength {
+            switch intensity {
+            case .emerging:
+                return "Shows promise; occasional good examples in this technical area"
+            case .solid:
+                return "Consistent; reliable technical capability"
+            case .strong:
+                return "Outstanding; models technical excellence for others"
+            default:
+                return ""
+            }
+        } else {
+            switch intensity {
+            case .emerging:
+                return "Early stage technical gap; needs active development"
+            case .developing:
+                return "Progressing but still affecting technical output quality"
+            case .blocking:
+                return "Critical technical gap; prevents higher-level responsibilities"
+            default:
+                return ""
+            }
+        }
     }
 }
 
