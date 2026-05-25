@@ -138,11 +138,13 @@ struct TechSkillsSection: View {
     
     // Filter tags to only show technical categories
     private var techStrengths: [StrengthWeakness] {
-        member.strengths.filter { TechnicalCategory.all.contains($0.category) }
+        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
+        return member.strengths.filter { technicalCategories.contains($0.category) }
     }
     
     private var techWeaknesses: [StrengthWeakness] {
-        member.weaknesses.filter { TechnicalCategory.all.contains($0.category) }
+        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
+        return member.weaknesses.filter { technicalCategories.contains($0.category) }
     }
     
     private func deleteTag(_ tag: StrengthWeakness) {
@@ -241,17 +243,26 @@ private struct TechSkillForm: View {
         self.kind = kind
         self.tagToEdit = tagToEdit
         
-        _selectedCategory = State(initialValue: tagToEdit?.category ?? TechnicalCategory.all[0])
-        _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? (kind == .strength ? .emerging : .emerging))
+        let technicalCategories = ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
+        _selectedCategory = State(initialValue: tagToEdit?.category ?? technicalCategories[0])
+        _selectedIntensity = State(initialValue: tagToEdit?.intensity ?? .emerging)
         _note = State(initialValue: tagToEdit?.note ?? "")
+    }
+    
+    private var technicalCategories: [String] {
+        ["Language Mastery", "Code Quality", "Code Review", "Testing", "Architecture", "DevOps", "Debugging Logic", "Observability", "Security"]
+    }
+    
+    private var validIntensities: [Intensity] {
+        kind == .strength ? Intensity.strengthCases : Intensity.weaknessCases
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("Technical Skill Category") {
+                Section("Category") {
                     Picker("Category", selection: $selectedCategory) {
-                        ForEach(TechnicalCategory.all, id: \.self) { category in
+                        ForEach(technicalCategories, id: \.self) { category in
                             Text(category).tag(category)
                         }
                     }
@@ -265,49 +276,14 @@ private struct TechSkillForm: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    
-                    Text(intensityDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
                 
                 Section("Notes (Optional)") {
                     TextEditor(text: $note)
                         .frame(minHeight: 100)
                 }
-                
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Intensity Guide")
-                            .font(.subheadline.weight(.semibold))
-                        
-                        if kind == .strength {
-                            ForEach(Intensity.strengthCases, id: \.self) { intensity in
-                                HStack(alignment: .top) {
-                                    Text(intensity.rawValue)
-                                        .font(.caption.weight(.medium))
-                                        .frame(width: 80, alignment: .leading)
-                                    Text(strengthDescription(intensity))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        } else {
-                            ForEach(Intensity.weaknessCases, id: \.self) { intensity in
-                                HStack(alignment: .top) {
-                                    Text(intensity.rawValue)
-                                        .font(.caption.weight(.medium))
-                                        .frame(width: 80, alignment: .leading)
-                                    Text(weaknessDescription(intensity))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
             }
-            .navigationTitle(title)
+            .navigationTitle(isEditing ? "Edit \(kind == .strength ? "Tech Strength" : "Tech Growth Area")" : "Add \(kind == .strength ? "Tech Strength" : "Tech Growth Area")")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -317,7 +293,7 @@ private struct TechSkillForm: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(tagToEdit != nil ? "Save" : "Add") {
+                    Button(isEditing ? "Save" : "Add") {
                         save()
                     }
                 }
@@ -325,40 +301,8 @@ private struct TechSkillForm: View {
         }
     }
     
-    private var title: String {
-        let action = tagToEdit != nil ? "Edit" : "Add"
-        let type = kind == .strength ? "Tech Strength" : "Tech Growth Area"
-        return "\(action) \(type)"
-    }
-    
-    private var validIntensities: [Intensity] {
-        kind == .strength ? Intensity.strengthCases : Intensity.weaknessCases
-    }
-    
-    private var intensityDescription: String {
-        if kind == .strength {
-            return strengthDescription(selectedIntensity)
-        } else {
-            return weaknessDescription(selectedIntensity)
-        }
-    }
-    
-    private func strengthDescription(_ intensity: Intensity) -> String {
-        switch intensity {
-        case .emerging: return "Shows promise; occasional good examples"
-        case .solid:    return "Consistent; reliable in this area"
-        case .strong:   return "Outstanding; models excellence for others"
-        default:        return ""
-        }
-    }
-    
-    private func weaknessDescription(_ intensity: Intensity) -> String {
-        switch intensity {
-        case .emerging:   return "Early stage; needs active development"
-        case .developing: return "Progressing but still affecting work quality"
-        case .blocking:   return "Critical gap; prevents higher-level responsibilities"
-        default:          return ""
-        }
+    private var isEditing: Bool {
+        tagToEdit != nil
     }
     
     private func save() {
