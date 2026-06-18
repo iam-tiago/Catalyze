@@ -222,5 +222,5 @@ private struct MemberViewPlaceholder: View {
 #Preview("App Layout") {
     AppLayout()
         .environment(AppStore())
-        .modelContainer(try! PersistenceController.makePreviewContainer())
+        .modelContainer(SampleDataProvider.makePreviewContainer())
 }

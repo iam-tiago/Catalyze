@@ -206,17 +206,17 @@ struct SettingsView: View {
             // Data Management section
             Section("Data Management") {
                 // Sample Data
-                Button {
+                Button(role: .destructive) {
                     showingSampleDataAlert = true
                 } label: {
-                    Label("Load Sample Data", systemImage: "person.3.fill")
+                    Label("Reset to Demo Data", systemImage: "arrow.counterclockwise")
                 }
-                
+
                 if showingSampleDataSuccess {
                     HStack(spacing: CSpace.sm) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(CColor.strength)
-                        Text("Sample data loaded successfully")
+                        Text("10 demo members loaded successfully")
                             .font(CFont.caption1)
                             .foregroundStyle(CColor.strength)
                     }
@@ -318,13 +318,13 @@ struct SettingsView: View {
         .onAppear {
             loadSettings()
         }
-        .alert("Load Sample Data?", isPresented: $showingSampleDataAlert) {
+        .alert("Reset to Demo Data?", isPresented: $showingSampleDataAlert) {
             Button("Cancel", role: .cancel) { }
-            Button("Load Sample Data") {
+            Button("Reset", role: .destructive) {
                 loadSampleData()
             }
         } message: {
-            Text("This will add 5 sample team members with observations, IDPs, and other mock data for demonstration purposes. Existing data will not be affected.")
+            Text("This will delete all existing team data and replace it with 10 demo members across iOS, Android, Frontend, and Backend. This cannot be undone.")
         }
         .sheet(isPresented: $showingTeamManagement) {
             TeamManagementView()
@@ -466,170 +466,19 @@ struct SettingsView: View {
     }
     
     private func loadSampleData() {
-        // Create 5 sample team members with realistic data
-        let sampleMembers: [(String, String, Seniority)] = [
-            ("Alice Chen", "Senior iOS Engineer", .t3_1),
-            ("Bob Silva", "Staff Engineer", .t4),
-            ("Carol Martinez", "iOS Engineer", .t2_2),
-            ("David Kumar", "Senior Backend Engineer", .t3_2),
-            ("Emma Thompson", "iOS Engineer", .t2_1)
-        ]
-        
-        var createdMembers: [TeamMember] = []
-        
-        for (name, role, seniority) in sampleMembers {
-            let member = TeamMember(
-                name: name,
-                role: role,
-                seniority: seniority
-            )
-            
-            // Add stack entries
-            let stackData: [(StackTag, StackProficiency)] = {
-                switch name {
-                case "Alice Chen":
-                    return [(.swiftUI, .expert), (.typescript, .proficient), (.react, .learning)]
-                case "Bob Silva":
-                    return [(.swiftUI, .expert), (.golang, .expert), (.docker, .proficient)]
-                case "Carol Martinez":
-                    return [(.swiftUI, .proficient), (.typescript, .learning)]
-                case "David Kumar":
-                    return [(.golang, .expert), (.docker, .expert), (.kubernetes, .proficient)]
-                case "Emma Thompson":
-                    return [(.swiftUI, .learning), (.typescript, .proficient)]
-                default:
-                    return []
-                }
-            }()
-            
-            let stackEntries = stackData.map { tag, level in
-                let entry = StackEntry(tag: tag, level: level)
-                entry.member = member
-                context.insert(entry)
-                return entry
-            }
-            member.stack = stackEntries
-            
-            // Add strengths
-            let strengths: [(String, Intensity)] = {
-                switch name {
-                case "Alice Chen":
-                    return [("Code Quality", .strong), ("SwiftUI", .strong), ("Mentoring", .solid)]
-                case "Bob Silva":
-                    return [("System Design", .strong), ("Code Quality", .strong), ("Leadership", .strong)]
-                case "Carol Martinez":
-                    return [("Learning Agility", .solid), ("UI/UX", .emerging)]
-                case "David Kumar":
-                    return [("Backend Architecture", .strong), ("Code Quality", .strong)]
-                case "Emma Thompson":
-                    return [("Problem Solving", .solid), ("Communication", .emerging)]
-                default:
-                    return []
-                }
-            }()
-            
-            for (category, intensity) in strengths {
-                let strength = StrengthWeakness(
-                    kind: .strength,
-                    category: category,
-                    intensity: intensity
-                )
-                strength.member = member
-                context.insert(strength)
-            }
-            
-            // Add weaknesses/opportunities
-            let weaknesses: [(String, Intensity)] = {
-                switch name {
-                case "Alice Chen":
-                    return [("Public Speaking", .emerging)]
-                case "Bob Silva":
-                    return [("Delegation", .emerging)]
-                case "Carol Martinez":
-                    return [("System Design", .developing), ("Testing", .emerging)]
-                case "David Kumar":
-                    return [("Frontend Skills", .emerging)]
-                case "Emma Thompson":
-                    return [("Code Review Skills", .emerging), ("Performance Optimization", .developing)]
-                default:
-                    return []
-                }
-            }()
-            
-            for (category, intensity) in weaknesses {
-                let weakness = StrengthWeakness(
-                    kind: .weakness,
-                    category: category,
-                    intensity: intensity
-                )
-                weakness.member = member
-                context.insert(weakness)
-            }
-            
-            // Add observations
-            let observations: [(Date, String, ObservationContext)] = {
-                let now = Date()
-                switch name {
-                case "Alice Chen":
-                    return [
-                        (now.addingTimeInterval(-7*24*3600), "Led the migration to SwiftUI with excellent technical decisions and clear documentation.", .sprintReview),
-                        (now.addingTimeInterval(-14*24*3600), "Mentored Carol on iOS best practices, showing great patience and teaching skills.", .oneOnOne)
-                    ]
-                case "Bob Silva":
-                    return [
-                        (now.addingTimeInterval(-3*24*3600), "Designed the new microservices architecture that improved system scalability by 3x.", .performanceCycle),
-                        (now.addingTimeInterval(-21*24*3600), "Could improve on delegating tasks to allow team members to grow.", .oneOnOne)
-                    ]
-                case "Carol Martinez":
-                    return [
-                        (now.addingTimeInterval(-5*24*3600), "Shipped her first major feature independently with minimal guidance.", .sprintReview),
-                        (now.addingTimeInterval(-12*24*3600), "Needs more practice with system design and architectural thinking.", .oneOnOne)
-                    ]
-                default:
-                    return []
-                }
-            }()
-            
-            for (date, text, context) in observations {
-                let obs = TeamObservation(
-                    memberId: member.id,
-                    text: text,
-                    context: context,
-                    createdAt: date
-                )
-                self.context.insert(obs)
-            }
-            
-            // Add IDP
-            if name == "Carol Martinez" || name == "Emma Thompson" {
-                let idp = DevelopmentPlan(
-                    memberId: member.id,
-                    title: "System Design & Architecture",
-                    objective: "Develop strong system design skills to independently architect medium-sized features",
-                    targetDate: Date().addingTimeInterval(90*24*3600),
-                    status: .active
-                )
-                context.insert(idp)
-            }
-            
-            context.insert(member)
-            createdMembers.append(member)
+        // Delete all existing team members (cascades to all related data)
+        let descriptor = FetchDescriptor<TeamMember>()
+        if let existing = try? context.fetch(descriptor) {
+            existing.forEach { context.delete($0) }
         }
-        
-        // Set up mentorship relationships
-        if createdMembers.count >= 3 {
-            createdMembers[2].mentor = createdMembers[0] // Carol mentored by Alice
-            createdMembers[4].mentor = createdMembers[0] // Emma mentored by Alice
-        }
-        
-        // Save
         try? context.save()
-        
-        // Show success message
+
+        // Populate with 10 demo members
+        SampleDataProvider.populate(in: context)
+
         withAnimation {
             showingSampleDataSuccess = true
         }
-        
         Task {
             try? await Task.sleep(for: .seconds(3))
             withAnimation {
