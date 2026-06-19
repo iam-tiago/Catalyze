@@ -264,57 +264,5 @@ private struct EmptyTeamView: View {
 // MARK: - Preview Helpers ----------------------------------------------------
 
 private func previewContainerWithMembers() -> ModelContainer {
-    let container = try! PersistenceController.makePreviewContainer()
-    let context = ModelContext(container)
-
-    // Sample members
-    let alice = TeamMember(
-        name: "Alice Chen",
-        role: "Senior iOS Engineer",
-        seniority: .t3_1
-    )
-
-    let aliceStrength1 = StrengthWeakness(
-        kind: .strength,
-        category: "Code Quality",
-        intensity: .strong
-    )
-    aliceStrength1.member = alice
-
-    let aliceStrength2 = StrengthWeakness(
-        kind: .strength,
-        category: "Leadership",
-        intensity: .solid
-    )
-    aliceStrength2.member = alice
-
-    alice.tags = [aliceStrength1, aliceStrength2]
-
-    let bob = TeamMember(
-        name: "Bob Silva",
-        role: "Backend Engineer",
-        seniority: .t2_2
-    )
-
-    let bobStrength = StrengthWeakness(
-        kind: .strength,
-        category: "Problem Solving",
-        intensity: .solid
-    )
-    bobStrength.member = bob
-    bob.tags = [bobStrength]
-
-    let carol = TeamMember(
-        name: "Carol Martins",
-        role: "Full Stack Engineer",
-        seniority: .t2_1
-    )
-
-    context.insert(alice)
-    context.insert(bob)
-    context.insert(carol)
-
-    try? context.save()
-
-    return container
+    SampleDataProvider.makePreviewContainer()
 }

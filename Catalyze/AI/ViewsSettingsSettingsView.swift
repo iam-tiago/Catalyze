@@ -2,50 +2,67 @@
 //  SettingsView.swift
 //  Catalyze
 //
-//  Settings view for configuring the EM profile, API credentials, and
-//  app preferences. Also includes import/export functionality.
-//
-//  ✨ Lightly adapted to Catalyze Design System v1.0
-//  (Form keeps native styling, only confirmations and colors updated)
-//
 
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 import PhotosUI
 
+// MARK: - SettingsSection
+
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case profile      = "profile"
+    case ai           = "ai"
+    case organization = "organization"
+    case data         = "data"
+    case appearance   = "appearance"
+    case about        = "about"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .profile:      return "Your Profile"
+        case .ai:           return "AI & API"
+        case .organization: return "Organization"
+        case .data:         return "Data"
+        case .appearance:   return "Appearance"
+        case .about:        return "About"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .profile:      return "person.crop.circle.fill"
+        case .ai:           return "key.fill"
+        case .organization: return "chart.bar.fill"
+        case .data:         return "externaldrive.fill"
+        case .appearance:   return "paintbrush.fill"
+        case .about:        return "info.circle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .profile:      return .blue
+        case .ai:           return .purple
+        case .organization: return .orange
+        case .data:         return .green
+        case .appearance:   return .pink
+        case .about:        return .gray
+        }
+    }
+}
+
+// MARK: - SettingsView
+
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var context
-    @Environment(\.seniorityService) private var seniorityService
 
-    @State private var name = ""
-    @State private var role = ""
-    @State private var teamName = ""
-    @State private var photoUrl = ""
-    @State private var photoItem: PhotosPickerItem? = nil
-    @State private var photoData: Data? = nil
-    @State private var apiKey = ""
-    @State private var baseURL = ""
-    @State private var showingTestResult = false
-    @State private var testResultMessage = ""
-    @State private var isTestingConnection = false
-    
-    // Save confirmation alerts
-    @State private var showProfileSaved = false
-    @State private var showCredentialsSaved = false
-    
-    // Appearance
-    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
-    
-    // Sample data
-    @State private var showingSampleDataAlert = false
-    @State private var showingSampleDataSuccess = false
-    
-    // Team management
-    @State private var showingTeamManagement = false
-    
-    // Export/Import
+    @State private var selectedSection: SettingsSection = .profile
+
+    // File I/O state (top-level — needed by fileExporter/fileImporter modifiers)
     @State private var showingExportActivity = false
     @State private var exportFileURL: URL?
     @State private var showingImportPicker = false
@@ -55,280 +72,14 @@ struct SettingsView: View {
     @State private var showingExportSuccess = false
 
     var body: some View {
-        Form {
-            // EM Profile section
-            Section("Your Profile") {
-                TextField("Name", text: $name)
-                    .textContentType(.name)
-
-                TextField("Role", text: $role)
-                    .textContentType(.jobTitle)
-
-                TextField("Team Name (optional)", text: $teamName)
-
-                // PhotosPicker for local photos
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label("Choose from Library", systemImage: "photo.on.rectangle")
-                }
-                .onChange(of: photoItem) { _, newItem in
-                    Task {
-                        if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                            photoData = data
-                            photoUrl = "" // Clear URL when photo is picked
-                        }
-                    }
-                }
-                
-                // OR URL field
-                TextField("Or paste photo URL", text: $photoUrl)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onChange(of: photoUrl) { _, newUrl in
-                        if !newUrl.isEmpty {
-                            photoData = nil // Clear photo data when URL is entered
-                            photoItem = nil
-                        }
-                    }
-
-                // Preview
-                if let data = photoData {
-                    #if os(iOS)
-                    if let uiImage = UIImage(data: data) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 60, height: 60)
-                            .clipShape(Circle())
-                    }
-                    #elseif os(macOS)
-                    if let nsImage = NSImage(data: data) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 60, height: 60)
-                            .clipShape(Circle())
-                    }
-                    #endif
-                } else if !photoUrl.isEmpty, let url = URL(string: photoUrl) {
-                    AsyncImage(url: url) { image in
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 60, height: 60)
-                            .clipShape(Circle())
-                    } placeholder: {
-                        ProgressView()
-                            .frame(width: 60, height: 60)
-                    }
-                }
-
-                Button("Save Profile") {
-                    saveProfile()
-                }
-                .buttonStyle(.borderedProminent)
-                
-                // Confirmation message
-                if showProfileSaved {
-                    HStack(spacing: CSpace.sm) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(CColor.strength)
-                        Text("Profile saved successfully")
-                            .font(CFont.caption1)
-                            .foregroundStyle(CColor.strength)
-                    }
-                    .transition(.opacity)
-                }
-            }
-
-            // API Credentials section
-            Section {
-                SecureField("API Key", text: $apiKey)
-                    .textContentType(.password)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-
-                TextField("Base URL", text: $baseURL)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-
-                Button {
-                    Task { await testConnection() }
-                } label: {
-                    if isTestingConnection {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Testing...")
-                        }
-                    } else {
-                        Label("Test Connection", systemImage: "network")
-                    }
-                }
-                .disabled(apiKey.isEmpty || isTestingConnection)
-
-                if showingTestResult {
-                    Text(testResultMessage)
-                        .font(.caption)
-                        .foregroundStyle(testResultMessage.contains("✓") ? .green : .red)
-                }
-
-                Button("Save Credentials") {
-                    saveCredentials()
-                }
-                .buttonStyle(.borderedProminent)
-                
-                // Confirmation message
-                if showCredentialsSaved {
-                    HStack(spacing: CSpace.sm) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(CColor.strength)
-                        Text("Credentials saved successfully")
-                            .font(CFont.caption1)
-                            .foregroundStyle(CColor.strength)
-                    }
-                    .transition(.opacity)
-                }
-            } header: {
-                Text("API Credentials")
-            } footer: {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Enter your Anthropic API key or a LiteLLM-compatible proxy endpoint.")
-                    Text("Default: \(ClaudeClient.defaultBaseURL)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            // Data Management section
-            Section("Data Management") {
-                // Sample Data
-                Button {
-                    showingSampleDataAlert = true
-                } label: {
-                    Label("Load Sample Data", systemImage: "person.3.fill")
-                }
-                
-                if showingSampleDataSuccess {
-                    HStack(spacing: CSpace.sm) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(CColor.strength)
-                        Text("Sample data loaded successfully")
-                            .font(CFont.caption1)
-                            .foregroundStyle(CColor.strength)
-                    }
-                    .transition(.opacity)
-                }
-                
-                // Team Management
-                Button {
-                    showingTeamManagement = true
-                } label: {
-                    Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
-                }
-                
-                Button {
-                    exportData()
-                } label: {
-                    Label("Export Data", systemImage: "square.and.arrow.up")
-                }
-                
-                if showingExportSuccess {
-                    HStack(spacing: CSpace.sm) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(CColor.strength)
-                        Text("Data exported successfully")
-                            .font(CFont.caption1)
-                            .foregroundStyle(CColor.strength)
-                    }
-                    .transition(.opacity)
-                }
-
-                Button {
-                    showingImportPicker = true
-                } label: {
-                    Label("Import Data", systemImage: "square.and.arrow.down")
-                }
-            }
-            
-            // ✅ ADDED: Seniority Configuration section
-            Section {
-                NavigationLink {
-                    SeniorityConfigView()
-                } label: {
-                    HStack {
-                        Label("Seniority Levels", systemImage: "chart.bar.fill")
-                        Spacer()
-                        if let service = seniorityService {
-                            Text(service.currentPreset.displayName)
-                                .font(CFont.caption1)
-                                .foregroundStyle(CColor.neutral600)
-                        }
-                    }
-                }
-                
-                NavigationLink {
-                    TechStackTagsManager()
-                } label: {
-                    Label("Tech Stack Tags", systemImage: "tag.fill")
-                }
-            } header: {
-                Text("Organization")
-            } footer: {
-                Text("Customize your team's career ladder and seniority levels.")
-                    .font(.caption)
-            }
-            
-            // Appearance section
-            Section {
-                Picker("Theme", selection: $appearanceMode) {
-                    Text("System").tag(AppearanceMode.system)
-                    Text("Light").tag(AppearanceMode.light)
-                    Text("Dark").tag(AppearanceMode.dark)
-                }
-                .pickerStyle(.segmented)
-            } header: {
-                Text("Appearance")
-            } footer: {
-                Text("Choose how Catalyze looks. System follows your device settings.")
-                    .font(.caption)
-            }
-
-            // About section
-            Section("About") {
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text("1.0.0")
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack {
-                    Text("Build")
-                    Spacer()
-                    Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
-                        .foregroundStyle(.secondary)
-                }
-            }
+        HStack(spacing: 0) {
+            SettingsSidebar(selectedSection: $selectedSection)
+            Divider()
+            settingsContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .navigationTitle("Settings")
-        .onAppear {
-            loadSettings()
-        }
-        .alert("Load Sample Data?", isPresented: $showingSampleDataAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Load Sample Data") {
-                loadSampleData()
-            }
-        } message: {
-            Text("This will add 5 sample team members with observations, IDPs, and other mock data for demonstration purposes. Existing data will not be affected.")
-        }
-        .sheet(isPresented: $showingTeamManagement) {
-            TeamManagementView()
-        }
+        .navigationTitle(selectedSection.title)
+        .navigationBarTitleDisplayMode(.inline)
         .fileExporter(
             isPresented: $showingExportActivity,
             document: exportFileURL != nil ? CatalyzeDocument(fileURL: exportFileURL!) : nil,
@@ -336,19 +87,13 @@ struct SettingsView: View {
             defaultFilename: generateExportFilename()
         ) { result in
             switch result {
-            case .success(let url):
-                print("Export successful: \(url)")
-                withAnimation {
-                    showingExportSuccess = true
-                }
+            case .success:
+                withAnimation { showingExportSuccess = true }
                 Task {
                     try? await Task.sleep(for: .seconds(3))
-                    withAnimation {
-                        showingExportSuccess = false
-                    }
+                    withAnimation { showingExportSuccess = false }
                 }
             case .failure(let error):
-                Logger.error(error, context: "Export file dialog")
                 importErrorMessage = "Failed to export: \(error.localizedDescription)"
                 showingImportError = true
             }
@@ -372,382 +117,41 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Helpers --------------------------------------------------------
-    
+    @ViewBuilder
+    private var settingsContent: some View {
+        switch selectedSection {
+        case .profile:
+            ProfileSettingsSection()
+        case .ai:
+            AISettingsSection()
+        case .organization:
+            OrganizationSettingsSection()
+        case .data:
+            DataSettingsSection(
+                onExport: exportData,
+                onImport: { showingImportPicker = true },
+                exportSuccess: showingExportSuccess
+            )
+        case .appearance:
+            AppearanceSettingsSection()
+        case .about:
+            AboutSettingsSection()
+        }
+    }
+
+    // MARK: - Export
+
     private func generateExportFilename() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-        let dateString = formatter.string(from: Date())
-        return "Catalyze-Export-\(dateString).json"
+        return "Catalyze-Export-\(formatter.string(from: Date())).json"
     }
 
-    private func loadSettings() {
-        // Load EM profile
-        name = store.emProfile.name
-        role = store.emProfile.role
-        teamName = store.emProfile.teamName ?? ""
-        photoUrl = store.emProfile.photoUrl ?? ""
-        photoData = store.emProfile.photoData
-
-        // Load API credentials
-        apiKey = store.apiKey
-        baseURL = store.baseURL
-    }
-
-    private func saveProfile() {
-        let profile = EMProfile(
-            name: name.trimmingCharacters(in: .whitespaces),
-            role: role.trimmingCharacters(in: .whitespaces),
-            teamName: teamName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : teamName.trimmingCharacters(in: .whitespaces),
-            photoUrl: photoUrl.trimmingCharacters(in: .whitespaces).isEmpty ? nil : photoUrl.trimmingCharacters(in: .whitespaces),
-            photoData: photoData
-        )
-        store.setEMProfile(profile)
-        
-        // Show confirmation
-        withAnimation {
-            showProfileSaved = true
-        }
-        
-        // Hide after 3 seconds
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            withAnimation {
-                showProfileSaved = false
-            }
-        }
-    }
-
-    private func saveCredentials() {
-        store.setApiKey(apiKey.trimmingCharacters(in: .whitespaces))
-        store.setBaseURL(baseURL.trimmingCharacters(in: .whitespaces).isEmpty
-            ? ClaudeClient.defaultBaseURL
-            : baseURL.trimmingCharacters(in: .whitespaces))
-        
-        // Show confirmation
-        withAnimation {
-            showCredentialsSaved = true
-        }
-        
-        // Hide after 3 seconds
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            withAnimation {
-                showCredentialsSaved = false
-            }
-        }
-    }
-
-    private func testConnection() async {
-        isTestingConnection = true
-        showingTestResult = false
-
-        let client = ClaudeClient(
-            apiKey: apiKey.trimmingCharacters(in: .whitespaces),
-            baseURL: baseURL.trimmingCharacters(in: .whitespaces).isEmpty
-                ? ClaudeClient.defaultBaseURL
-                : baseURL.trimmingCharacters(in: .whitespaces)
-        )
-
-        do {
-            _ = try await client.complete(
-                messages: [ChatMessage(role: "user", content: "Hello")],
-                maxTokens: 10
-            ) { _ in }
-
-            testResultMessage = "✓ Connection successful"
-            showingTestResult = true
-        } catch {
-            testResultMessage = "✗ Connection failed: \(error.localizedDescription)"
-            showingTestResult = true
-        }
-
-        isTestingConnection = false
-    }
-    
-    private func loadSampleData() {
-        // Create 5 sample team members with realistic data
-        let sampleMembers: [(String, String, Seniority)] = [
-            ("Alice Chen", "Senior iOS Engineer", .t3_1),
-            ("Bob Silva", "Staff Engineer", .t4),
-            ("Carol Martinez", "iOS Engineer", .t2_2),
-            ("David Kumar", "Senior Backend Engineer", .t3_2),
-            ("Emma Thompson", "iOS Engineer", .t2_1)
-        ]
-        
-        var createdMembers: [TeamMember] = []
-        
-        for (name, role, seniority) in sampleMembers {
-            let member = TeamMember(
-                name: name,
-                role: role,
-                seniority: seniority
-            )
-            
-            // Add stack entries
-            let stackData: [(StackTag, StackProficiency)] = {
-                switch name {
-                case "Alice Chen":
-                    return [(.swiftUI, .expert), (.typescript, .proficient), (.react, .learning)]
-                case "Bob Silva":
-                    return [(.swiftUI, .expert), (.golang, .expert), (.docker, .proficient)]
-                case "Carol Martinez":
-                    return [(.swiftUI, .proficient), (.typescript, .learning)]
-                case "David Kumar":
-                    return [(.golang, .expert), (.docker, .expert), (.kubernetes, .proficient)]
-                case "Emma Thompson":
-                    return [(.swiftUI, .learning), (.typescript, .proficient)]
-                default:
-                    return []
-                }
-            }()
-            
-            let stackEntries = stackData.map { tag, level in
-                let entry = StackEntry(tag: tag, level: level)
-                entry.member = member
-                context.insert(entry)
-                return entry
-            }
-            member.stack = stackEntries
-            
-            // Add strengths
-            let strengths: [(String, Intensity)] = {
-                switch name {
-                case "Alice Chen":
-                    return [("Code Quality", .strong), ("SwiftUI", .strong), ("Mentoring", .solid)]
-                case "Bob Silva":
-                    return [("System Design", .strong), ("Code Quality", .strong), ("Leadership", .strong)]
-                case "Carol Martinez":
-                    return [("Learning Agility", .solid), ("UI/UX", .emerging)]
-                case "David Kumar":
-                    return [("Backend Architecture", .strong), ("Code Quality", .strong)]
-                case "Emma Thompson":
-                    return [("Problem Solving", .solid), ("Communication", .emerging)]
-                default:
-                    return []
-                }
-            }()
-            
-            for (category, intensity) in strengths {
-                let strength = StrengthWeakness(
-                    kind: .strength,
-                    category: category,
-                    intensity: intensity
-                )
-                strength.member = member
-                context.insert(strength)
-            }
-            
-            // Add weaknesses/opportunities
-            let weaknesses: [(String, Intensity)] = {
-                switch name {
-                case "Alice Chen":
-                    return [("Public Speaking", .emerging)]
-                case "Bob Silva":
-                    return [("Delegation", .emerging)]
-                case "Carol Martinez":
-                    return [("System Design", .developing), ("Testing", .emerging)]
-                case "David Kumar":
-                    return [("Frontend Skills", .emerging)]
-                case "Emma Thompson":
-                    return [("Code Review Skills", .emerging), ("Performance Optimization", .developing)]
-                default:
-                    return []
-                }
-            }()
-            
-            for (category, intensity) in weaknesses {
-                let weakness = StrengthWeakness(
-                    kind: .weakness,
-                    category: category,
-                    intensity: intensity
-                )
-                weakness.member = member
-                context.insert(weakness)
-            }
-            
-            // Add observations
-            let observations: [(Date, String, ObservationContext)] = {
-                let now = Date()
-                switch name {
-                case "Alice Chen":
-                    return [
-                        (now.addingTimeInterval(-7*24*3600), "Led the migration to SwiftUI with excellent technical decisions and clear documentation.", .sprintReview),
-                        (now.addingTimeInterval(-14*24*3600), "Mentored Carol on iOS best practices, showing great patience and teaching skills.", .oneOnOne)
-                    ]
-                case "Bob Silva":
-                    return [
-                        (now.addingTimeInterval(-3*24*3600), "Designed the new microservices architecture that improved system scalability by 3x.", .performanceCycle),
-                        (now.addingTimeInterval(-21*24*3600), "Could improve on delegating tasks to allow team members to grow.", .oneOnOne)
-                    ]
-                case "Carol Martinez":
-                    return [
-                        (now.addingTimeInterval(-5*24*3600), "Shipped her first major feature independently with minimal guidance.", .sprintReview),
-                        (now.addingTimeInterval(-12*24*3600), "Needs more practice with system design and architectural thinking.", .oneOnOne)
-                    ]
-                default:
-                    return []
-                }
-            }()
-            
-            for (date, text, context) in observations {
-                let obs = TeamObservation(
-                    memberId: member.id,
-                    text: text,
-                    context: context,
-                    createdAt: date
-                )
-                self.context.insert(obs)
-            }
-            
-            // Add IDP
-            if name == "Carol Martinez" || name == "Emma Thompson" {
-                let idp = DevelopmentPlan(
-                    memberId: member.id,
-                    title: "System Design & Architecture",
-                    objective: "Develop strong system design skills to independently architect medium-sized features",
-                    targetDate: Date().addingTimeInterval(90*24*3600),
-                    status: .active
-                )
-                context.insert(idp)
-            }
-            
-            context.insert(member)
-            createdMembers.append(member)
-        }
-        
-        // Set up mentorship relationships
-        if createdMembers.count >= 3 {
-            createdMembers[2].mentor = createdMembers[0] // Carol mentored by Alice
-            createdMembers[4].mentor = createdMembers[0] // Emma mentored by Alice
-        }
-        
-        // Save
-        try? context.save()
-        
-        // Show success message
-        withAnimation {
-            showingSampleDataSuccess = true
-        }
-        
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            withAnimation {
-                showingSampleDataSuccess = false
-            }
-        }
-    }
-    
-    // MARK: - Export/Import --------------------------------------------------
-    
-    // MARK: - Temporary Migration Functions (Commented Out)
-    // Uncomment these if you need to run data cleanup operations
-    
-    /*
-    private func cleanupProblemSolvingTags() {
-        Logger.log("Starting cleanup of 'Problem Solving' tags", level: .info)
-        
-        let descriptor = FetchDescriptor<StrengthWeakness>(
-            predicate: #Predicate { $0.category == "Problem Solving" }
-        )
-        
-        do {
-            let tags = try context.fetch(descriptor)
-            Logger.log("Found \(tags.count) 'Problem Solving' tags to delete", level: .info)
-            
-            for tag in tags {
-                context.delete(tag)
-            }
-            
-            try context.save()
-            Logger.log("Successfully deleted \(tags.count) 'Problem Solving' tags", level: .success)
-            
-            // Show success feedback
-            withAnimation {
-                showingSampleDataSuccess = true
-            }
-            
-            Task {
-                try? await Task.sleep(for: .seconds(3))
-                withAnimation {
-                    showingSampleDataSuccess = false
-                }
-            }
-        } catch {
-            Logger.error(error, context: "Cleanup Problem Solving tags")
-            importErrorMessage = "Failed to cleanup tags: \(error.localizedDescription)"
-            showingImportError = true
-        }
-    }
-    
-    private func cleanupTechnicalCategoriesMigration() {
-        Logger.log("Starting technical categories cleanup", level: .info)
-        
-        var deletedCount = 0
-        var renamedCount = 0
-        
-        do {
-            // Delete "Language Mastery"
-            let languageMasteryDescriptor = FetchDescriptor<StrengthWeakness>(
-                predicate: #Predicate { $0.category == "Language Mastery" }
-            )
-            let languageMasteryTags = try context.fetch(languageMasteryDescriptor)
-            for tag in languageMasteryTags {
-                context.delete(tag)
-                deletedCount += 1
-            }
-            
-            // Delete "Security"
-            let securityDescriptor = FetchDescriptor<StrengthWeakness>(
-                predicate: #Predicate { $0.category == "Security" }
-            )
-            let securityTags = try context.fetch(securityDescriptor)
-            for tag in securityTags {
-                context.delete(tag)
-                deletedCount += 1
-            }
-            
-            // Rename "Debugging Logic" → "Debugging"
-            let debuggingLogicDescriptor = FetchDescriptor<StrengthWeakness>(
-                predicate: #Predicate { $0.category == "Debugging Logic" }
-            )
-            let debuggingLogicTags = try context.fetch(debuggingLogicDescriptor)
-            for tag in debuggingLogicTags {
-                tag.category = "Debugging"
-                renamedCount += 1
-            }
-            
-            try context.save()
-            Logger.log("Technical cleanup complete: \(deletedCount) deleted, \(renamedCount) renamed", level: .success)
-            
-            // Show success feedback
-            withAnimation {
-                showingSampleDataSuccess = true
-            }
-            
-            Task {
-                try? await Task.sleep(for: .seconds(3))
-                withAnimation {
-                    showingSampleDataSuccess = false
-                }
-            }
-        } catch {
-            Logger.error(error, context: "Technical categories cleanup")
-            importErrorMessage = "Failed to cleanup: \(error.localizedDescription)"
-            showingImportError = true
-        }
-    }
-    */
-    
     private func exportData() {
-        Logger.log("Export data initiated", level: .info)
         do {
-            // Fetch all team members
             let descriptor = FetchDescriptor<TeamMember>(sortBy: [SortDescriptor(\.name)])
             let members = try context.fetch(descriptor)
-            Logger.log("Fetched \(members.count) members for export", level: .info)
-            
-            // Create exportable data structure
+
             let exportData = ExportData(
                 version: "1.0.0",
                 exportDate: Date(),
@@ -763,114 +167,55 @@ struct SettingsView: View {
                         mentorId: member.mentor?.id,
                         mentorName: member.mentorName,
                         externalMentees: member.externalMentees,
-                        stack: (member.stack ?? []).map { entry in
-                            ExportStackEntry(tag: entry.tagRaw, level: entry.levelRaw)
-                        },
-                        tags: (member.tags ?? []).map { tag in
-                            ExportTag(
-                                kind: tag.kindRaw,
-                                category: tag.category,
-                                intensity: tag.intensityRaw,
-                                note: tag.note,
-                                createdAt: tag.createdAt
-                            )
-                        },
-                        observations: (member.observations ?? []).map { obs in
-                            ExportObservation(
-                                text: obs.text,
-                                context: obs.contextRaw,
-                                createdAt: obs.createdAt
-                            )
-                        },
+                        stack: (member.stack ?? []).map { ExportStackEntry(tag: $0.tagRaw, level: $0.levelRaw) },
+                        tags: (member.tags ?? []).map { ExportTag(kind: $0.kindRaw, category: $0.category, intensity: $0.intensityRaw, note: $0.note, createdAt: $0.createdAt) },
+                        observations: (member.observations ?? []).map { ExportObservation(text: $0.text, context: $0.contextRaw, createdAt: $0.createdAt) },
                         createdAt: member.createdAt,
                         updatedAt: member.updatedAt
                     )
                 }
             )
-            
-            // Encode to JSON
+
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(exportData)
-            Logger.log("JSON encoded: \(jsonData.count) bytes", level: .success)
-            
-            // Write to temporary file with safe filename
-            let tempDir = FileManager.default.temporaryDirectory
-            let filename = generateExportFilename()
-            let tempURL = tempDir.appendingPathComponent(filename)
-            
-            // Remove old file if exists
+
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(generateExportFilename())
             if FileManager.default.fileExists(atPath: tempURL.path) {
                 try FileManager.default.removeItem(at: tempURL)
             }
-            
             try jsonData.write(to: tempURL)
-            Logger.log("File written to: \(tempURL.path)", level: .success)
-            
+
             exportFileURL = tempURL
             showingExportActivity = true
-            
         } catch {
-            Logger.error(error, context: "Export data")
             importErrorMessage = "Failed to export: \(error.localizedDescription)"
             showingImportError = true
         }
     }
-    
+
+    // MARK: - Import
+
     private func handleImport(result: Result<[URL], Error>) {
         do {
-            guard let selectedFile = try result.get().first else {
-                throw NSError(
-                    domain: "Catalyze",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "No file selected"]
-                )
-            }
-            
-            Logger.log("Starting import from: \(selectedFile.lastPathComponent)", level: .info)
-            
-            // Start accessing security-scoped resource
+            guard let selectedFile = try result.get().first else { return }
             guard selectedFile.startAccessingSecurityScopedResource() else {
-                throw NSError(
-                    domain: "Catalyze",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Unable to access file. Please try selecting the file again."]
-                )
+                throw NSError(domain: "Catalyze", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to access file."])
             }
             defer { selectedFile.stopAccessingSecurityScopedResource() }
-            
-            // Read and decode JSON
+
             let jsonData = try Data(contentsOf: selectedFile)
-            Logger.log("Read \(jsonData.count) bytes from file", level: .info)
-            
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let importData = try decoder.decode(ExportData.self, from: jsonData)
-            
-            Logger.log("Decoded \(importData.members.count) members from export version \(importData.version)", level: .info)
-            
-            // Validate version compatibility
-            if importData.version != "1.0.0" {
-                Logger.log("Warning: Import version \(importData.version) may not be fully compatible", level: .warning)
-            }
-            
-            // Import members
+
             var memberIdMap: [String: TeamMember] = [:]
-            var importedCount = 0
-            
+
             for exportMember in importData.members {
-                // Check if member already exists
-                let checkDescriptor = FetchDescriptor<TeamMember>(
-                    predicate: #Predicate { $0.id == exportMember.id }
-                )
-                let existing = try context.fetch(checkDescriptor)
-                
-                if !existing.isEmpty {
-                    Logger.log("Skipping duplicate member: \(exportMember.name)", level: .warning)
-                    continue
-                }
-                
+                let checkDescriptor = FetchDescriptor<TeamMember>(predicate: #Predicate { $0.id == exportMember.id })
+                if !(try context.fetch(checkDescriptor)).isEmpty { continue }
+
                 let member = TeamMember(
                     id: exportMember.id,
                     name: exportMember.name,
@@ -883,51 +228,30 @@ struct SettingsView: View {
                 member.photoData = exportMember.photoData
                 member.mentorName = exportMember.mentorName
                 member.externalMentees = exportMember.externalMentees
-                
-                // Import stack
-                member.stack = exportMember.stack.map { entry in
-                    let stackEntry = StackEntry(
-                        tag: StackTag(rawValue: entry.tag) ?? .typescript,
-                        level: StackProficiency(rawValue: entry.level) ?? .learning
-                    )
-                    stackEntry.member = member
-                    context.insert(stackEntry)
-                    return stackEntry
+
+                member.stack = exportMember.stack.map {
+                    let e = StackEntry(tag: StackTag(rawValue: $0.tag) ?? .typescript, level: StackProficiency(rawValue: $0.level) ?? .learning)
+                    e.member = member
+                    context.insert(e)
+                    return e
                 }
-                
-                // Import tags
-                member.tags = exportMember.tags.map { tag in
-                    let strengthWeakness = StrengthWeakness(
-                        kind: SWKind(rawValue: tag.kind) ?? .strength,
-                        category: tag.category,
-                        intensity: Intensity(rawValue: tag.intensity) ?? .emerging,
-                        note: tag.note,
-                        createdAt: tag.createdAt
-                    )
-                    strengthWeakness.member = member
-                    context.insert(strengthWeakness)
-                    return strengthWeakness
+                member.tags = exportMember.tags.map {
+                    let t = StrengthWeakness(kind: SWKind(rawValue: $0.kind) ?? .strength, category: $0.category, intensity: Intensity(rawValue: $0.intensity) ?? .emerging, note: $0.note, createdAt: $0.createdAt)
+                    t.member = member
+                    context.insert(t)
+                    return t
                 }
-                
-                // Import observations
-                member.observations = exportMember.observations.map { obs in
-                    let observation = TeamObservation(
-                        memberId: member.id,
-                        text: obs.text,
-                        context: ObservationContext(rawValue: obs.context) ?? .oneOnOne,
-                        createdAt: obs.createdAt
-                    )
-                    observation.member = member
-                    context.insert(observation)
-                    return observation
+                member.observations = exportMember.observations.map {
+                    let o = TeamObservation(memberId: member.id, text: $0.text, context: ObservationContext(rawValue: $0.context) ?? .oneOnOne, createdAt: $0.createdAt)
+                    o.member = member
+                    context.insert(o)
+                    return o
                 }
-                
+
                 context.insert(member)
                 memberIdMap[member.id] = member
-                importedCount += 1
             }
-            
-            // Set up mentor relationships (after all members are created)
+
             for exportMember in importData.members {
                 if let mentorId = exportMember.mentorId,
                    let member = memberIdMap[exportMember.id],
@@ -935,32 +259,532 @@ struct SettingsView: View {
                     member.mentor = mentor
                 }
             }
-            
-            // Import EM profile if included
+
             if let emProfile = importData.emProfile {
                 store.setEMProfile(emProfile)
-                Logger.log("EM Profile imported", level: .info)
             }
-            
-            // Save all changes
+
             try context.save()
-            Logger.log("Import successful: \(importedCount) members imported", level: .success)
-            
             showingImportSuccess = true
-            
-        } catch let decodingError as DecodingError {
-            Logger.error(decodingError, context: "Import - JSON decoding")
+        } catch is DecodingError {
             importErrorMessage = "Invalid file format. Please ensure you're importing a valid Catalyze export file."
             showingImportError = true
         } catch {
-            Logger.error(error, context: "Import")
             importErrorMessage = "Failed to import data: \(error.localizedDescription)"
             showingImportError = true
         }
     }
 }
 
-// MARK: - Export/Import Data Structures -------------------------------------
+// MARK: - Sidebar
+
+private struct SettingsSidebar: View {
+    @Binding var selectedSection: SettingsSection
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Settings")
+                    .font(CFont.headline)
+                    .foregroundStyle(CColor.neutral900)
+                Spacer()
+            }
+            .padding(.horizontal, CSpace.lg)
+            .padding(.vertical, CSpace.md)
+
+            Divider()
+
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach(SettingsSection.allCases) { section in
+                        SidebarRow(section: section, isSelected: selectedSection == section) {
+                            selectedSection = section
+                        }
+                    }
+                }
+                .padding(CSpace.sm)
+            }
+        }
+        .frame(width: 220)
+        .background(CColor.neutral50)
+    }
+}
+
+private struct SidebarRow: View {
+    let section: SettingsSection
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: CSpace.md) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 28, height: 28)
+                    .background(section.color)
+                    .clipShape(RoundedRectangle(cornerRadius: CRadius.xs))
+
+                Text(section.title)
+                    .font(CFont.subheadline)
+                    .foregroundStyle(CColor.neutral900)
+
+                Spacer()
+            }
+            .padding(.horizontal, CSpace.sm)
+            .padding(.vertical, CSpace.sm)
+            .background(isSelected ? CColor.brandPrimaryLight : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: CRadius.sm))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Profile Section
+
+private enum PhotoSource { case library, url }
+
+private struct ProfileSettingsSection: View {
+    @Environment(AppStore.self) private var store
+
+    @State private var name = ""
+    @State private var role = ""
+    @State private var teamName = ""
+    @State private var photoUrl = ""
+    @State private var photoItem: PhotosPickerItem?
+    @State private var photoData: Data?
+    @State private var photoSource: PhotoSource = .library
+    @State private var showProfileSaved = false
+
+    var body: some View {
+        Form {
+            // Avatar header — live preview
+            Section {
+                VStack(spacing: CSpace.sm) {
+                    avatarView
+                        .frame(width: 80, height: 80)
+
+                    VStack(spacing: 2) {
+                        Text(name.isEmpty ? "Your Name" : name)
+                            .font(CFont.headline)
+                            .foregroundStyle(CColor.neutral900)
+                        if !role.isEmpty {
+                            Text(role)
+                                .font(CFont.subheadline)
+                                .foregroundStyle(CColor.neutral600)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, CSpace.md)
+                .listRowBackground(Color.clear)
+                .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
+            }
+
+            Section("Identity") {
+                TextField("Name", text: $name)
+                    .textContentType(.name)
+                TextField("Role", text: $role)
+                    .textContentType(.jobTitle)
+                TextField("Team Name (optional)", text: $teamName)
+            }
+
+            Section("Photo") {
+                Picker("Source", selection: $photoSource) {
+                    Label("Library", systemImage: "photo.on.rectangle").tag(PhotoSource.library)
+                    Label("URL", systemImage: "link").tag(PhotoSource.url)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: photoSource) { _, new in
+                    if new == .library { photoUrl = "" }
+                    else { photoData = nil; photoItem = nil }
+                }
+
+                if photoSource == .library {
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        Label("Choose from Library", systemImage: "photo.on.rectangle")
+                    }
+                    .onChange(of: photoItem) { _, newItem in
+                        Task {
+                            if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                                photoData = data
+                            }
+                        }
+                    }
+                } else {
+                    TextField("Photo URL", text: $photoUrl)
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                }
+            }
+
+            Section {
+                Button("Save Profile") { save() }
+                    .buttonStyle(.borderedProminent)
+
+                if showProfileSaved {
+                    Label("Profile saved", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(CColor.strength)
+                        .font(CFont.caption1)
+                        .transition(.opacity)
+                }
+            }
+        }
+        .onAppear { load() }
+    }
+
+    @ViewBuilder
+    private var avatarView: some View {
+        if let data = photoData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .clipShape(Circle())
+        } else if !photoUrl.isEmpty, let url = URL(string: photoUrl) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                ProgressView()
+            }
+            .clipShape(Circle())
+        } else {
+            ZStack {
+                Circle().fill(CColor.brandPrimaryLight)
+                Text(name.prefix(1).uppercased().isEmpty ? "?" : name.prefix(1).uppercased())
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(CColor.brandPrimary)
+            }
+        }
+    }
+
+    private func load() {
+        name     = store.emProfile.name
+        role     = store.emProfile.role
+        teamName = store.emProfile.teamName ?? ""
+        photoUrl = store.emProfile.photoUrl ?? ""
+        photoData = store.emProfile.photoData
+        photoSource = (store.emProfile.photoData != nil) ? .library
+                    : (store.emProfile.photoUrl != nil)  ? .url
+                    : .library
+    }
+
+    private func save() {
+        let profile = EMProfile(
+            name: name.trimmingCharacters(in: .whitespaces),
+            role: role.trimmingCharacters(in: .whitespaces),
+            teamName: teamName.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+            photoUrl: photoUrl.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+            photoData: photoData
+        )
+        store.setEMProfile(profile)
+        withAnimation { showProfileSaved = true }
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation { showProfileSaved = false }
+        }
+    }
+}
+
+// MARK: - AI Section
+
+private struct AISettingsSection: View {
+    @Environment(AppStore.self) private var store
+
+    @State private var apiKey = ""
+    @State private var baseURL = ""
+    @State private var testResultMessage = ""
+    @State private var showingTestResult = false
+    @State private var isTestingConnection = false
+    @State private var showCredentialsSaved = false
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("API Key", text: $apiKey)
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+
+                TextField("Base URL", text: $baseURL)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            } header: {
+                Text("Claude API")
+            } footer: {
+                VStack(alignment: .leading, spacing: CSpace.xs) {
+                    Text("Enter your Anthropic API key or a LiteLLM-compatible proxy endpoint.")
+                    Text("Default: \(ClaudeClient.defaultBaseURL)")
+                        .foregroundStyle(CColor.neutral400)
+                }
+                .font(CFont.caption2)
+            }
+
+            Section {
+                Button {
+                    Task { await testConnection() }
+                } label: {
+                    if isTestingConnection {
+                        HStack(spacing: CSpace.sm) {
+                            ProgressView().controlSize(.small)
+                            Text("Testing...")
+                        }
+                    } else {
+                        Label("Test Connection", systemImage: "network")
+                    }
+                }
+                .disabled(apiKey.isEmpty || isTestingConnection)
+
+                if showingTestResult {
+                    Label(
+                        testResultMessage,
+                        systemImage: testResultMessage.contains("✓") ? "checkmark.circle.fill" : "xmark.circle.fill"
+                    )
+                    .foregroundStyle(testResultMessage.contains("✓") ? CColor.strength : CColor.destructive)
+                    .font(CFont.caption1)
+                }
+
+                Button("Save Credentials") { save() }
+                    .buttonStyle(.borderedProminent)
+
+                if showCredentialsSaved {
+                    Label("Credentials saved", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(CColor.strength)
+                        .font(CFont.caption1)
+                        .transition(.opacity)
+                }
+            }
+        }
+        .onAppear { load() }
+    }
+
+    private func load() {
+        apiKey  = store.apiKey
+        baseURL = store.baseURL
+    }
+
+    private func save() {
+        store.setApiKey(apiKey.trimmingCharacters(in: .whitespaces))
+        let trimmedURL = baseURL.trimmingCharacters(in: .whitespaces)
+        store.setBaseURL(trimmedURL.isEmpty ? ClaudeClient.defaultBaseURL : trimmedURL)
+        withAnimation { showCredentialsSaved = true }
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation { showCredentialsSaved = false }
+        }
+    }
+
+    private func testConnection() async {
+        isTestingConnection = true
+        showingTestResult   = false
+        let trimmedURL = baseURL.trimmingCharacters(in: .whitespaces)
+        let client = ClaudeClient(
+            apiKey: apiKey.trimmingCharacters(in: .whitespaces),
+            baseURL: trimmedURL.isEmpty ? ClaudeClient.defaultBaseURL : trimmedURL
+        )
+        do {
+            _ = try await client.complete(
+                messages: [ChatMessage(role: "user", content: "Hello")],
+                maxTokens: 10
+            ) { _ in }
+            testResultMessage = "✓ Connection successful"
+        } catch {
+            testResultMessage = "✗ \(error.localizedDescription)"
+        }
+        showingTestResult   = true
+        isTestingConnection = false
+    }
+}
+
+// MARK: - Organization Section
+
+private struct OrganizationSettingsSection: View {
+    @Environment(\.seniorityService) private var seniorityService
+
+    @State private var showingSeniorityConfig = false
+    @State private var showingTagsManager     = false
+
+    var body: some View {
+        Form {
+            Section {
+                Button { showingSeniorityConfig = true } label: {
+                    HStack {
+                        Label("Seniority Levels", systemImage: "chart.bar.fill")
+                        Spacer()
+                        if let service = seniorityService {
+                            Text(service.currentPreset.displayName)
+                                .font(CFont.caption1)
+                                .foregroundStyle(CColor.neutral600)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(CColor.neutral400)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Button { showingTagsManager = true } label: {
+                    HStack {
+                        Label("Tech Stack Tags", systemImage: "tag.fill")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(CColor.neutral400)
+                    }
+                }
+                .buttonStyle(.plain)
+            } footer: {
+                Text("Customize your team's career ladder and technology tags.")
+            }
+        }
+        .sheet(isPresented: $showingSeniorityConfig) {
+            NavigationStack { SeniorityConfigView() }
+        }
+        .sheet(isPresented: $showingTagsManager) {
+            NavigationStack { TechStackTagsManager() }
+        }
+    }
+}
+
+// MARK: - Data Section
+
+private struct DataSettingsSection: View {
+    @Environment(\.modelContext) private var context
+    @Environment(AppStore.self) private var store
+
+    let onExport: () -> Void
+    let onImport: () -> Void
+    let exportSuccess: Bool
+
+    @State private var showingSampleDataAlert   = false
+    @State private var showingSampleDataSuccess = false
+    @State private var showingTeamManagement    = false
+
+    var body: some View {
+        Form {
+            Section("Transfer") {
+                Button { onExport() } label: {
+                    Label("Export Data", systemImage: "square.and.arrow.up")
+                }
+
+                if exportSuccess {
+                    Label("Data exported successfully", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(CColor.strength)
+                        .font(CFont.caption1)
+                }
+
+                Button { onImport() } label: {
+                    Label("Import Data", systemImage: "square.and.arrow.down")
+                }
+            }
+
+            Section("Team") {
+                Button { showingTeamManagement = true } label: {
+                    Label("Manage Team", systemImage: "person.crop.circle.badge.minus")
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showingSampleDataAlert = true
+                } label: {
+                    Label("Reset to Demo Data", systemImage: "arrow.counterclockwise")
+                }
+
+                if showingSampleDataSuccess {
+                    Label("10 demo members loaded successfully", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(CColor.strength)
+                        .font(CFont.caption1)
+                        .transition(.opacity)
+                }
+            } header: {
+                Text("Reset")
+            } footer: {
+                Text("Replaces all existing team data with 10 demo members.")
+            }
+        }
+        .alert("Reset to Demo Data?", isPresented: $showingSampleDataAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) { resetData() }
+        } message: {
+            Text("This will delete all existing team data and replace it with 10 demo members across iOS, Android, Frontend, and Backend. This cannot be undone.")
+        }
+        .sheet(isPresented: $showingTeamManagement) {
+            TeamManagementView()
+        }
+    }
+
+    private func resetData() {
+        let descriptor = FetchDescriptor<TeamMember>()
+        if let existing = try? context.fetch(descriptor) {
+            existing.forEach { context.delete($0) }
+        }
+        try? context.save()
+        SampleDataProvider.populate(in: context)
+        withAnimation { showingSampleDataSuccess = true }
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation { showingSampleDataSuccess = false }
+        }
+    }
+}
+
+// MARK: - Appearance Section
+
+private struct AppearanceSettingsSection: View {
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Theme", selection: $appearanceMode) {
+                    Text("System").tag(AppearanceMode.system)
+                    Text("Light").tag(AppearanceMode.light)
+                    Text("Dark").tag(AppearanceMode.dark)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Theme")
+            } footer: {
+                Text("System follows your device settings.")
+            }
+        }
+    }
+}
+
+// MARK: - About Section
+
+private struct AboutSettingsSection: View {
+    var body: some View {
+        Form {
+            Section("About Catalyze") {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
+                        .foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text("Build")
+                    Spacer()
+                    Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - String helper
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+// MARK: - Export/Import Data Structures
 
 struct ExportData: Codable {
     let version: String
@@ -1005,21 +829,20 @@ struct ExportObservation: Codable {
     let createdAt: Date
 }
 
-// MARK: - File Document Wrapper ---------------------------------------------
+// MARK: - File Document Wrapper
 
 struct CatalyzeDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
-    
+
     let fileURL: URL
-    
+
     init(fileURL: URL) {
         self.fileURL = fileURL
     }
-    
+
     init(configuration: ReadConfiguration) throws {
-        guard let url = configuration.file.regularFileContents.flatMap({ data in
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("temp-import.json")
+        guard let url = configuration.file.regularFileContents.flatMap({ data -> URL? in
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("temp-import.json")
             try? data.write(to: tempURL)
             return tempURL
         }) else {
@@ -1027,25 +850,25 @@ struct CatalyzeDocument: FileDocument {
         }
         self.fileURL = url
     }
-    
+
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let data = try Data(contentsOf: fileURL)
         return FileWrapper(regularFileWithContents: data)
     }
 }
 
-// MARK: - Team Management View -----------------------------------------------
+// MARK: - Team Management View
 
 private struct TeamManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(AppStore.self) private var store
-    
+
     @Query(sort: \TeamMember.name) private var members: [TeamMember]
-    
+
     @State private var memberToDelete: TeamMember?
     @State private var showingDeleteAlert = false
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -1057,36 +880,14 @@ private struct TeamManagementView: View {
                     }
                 } else {
                     ForEach(members) { member in
-                        HStack(spacing: 16) {
-                            // Avatar
-                            Group {
-                                if let avatarImage = member.avatarImage {
-                                    avatarImage
-                                        .resizable()
-                                        .scaledToFill()
-                                } else if let urlString = member.photoUrl,
-                                          let url = URL(string: urlString) {
-                                    AsyncImage(url: url) { image in
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    } placeholder: {
-                                        placeholderAvatar
-                                    }
-                                } else {
-                                    placeholderAvatar
-                                }
-                            }
-                            .frame(width: 50, height: 50)
-                            .clipShape(Circle())
-                            
-                            // Info
+                        HStack(spacing: CSpace.lg) {
+                            avatarView(for: member)
+                                .frame(width: 50, height: 50)
+                                .clipShape(Circle())
+
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(member.name)
-                                    .font(.headline)
-                                Text(member.role)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                Text(member.name).font(.headline)
+                                Text(member.role).font(.subheadline).foregroundStyle(.secondary)
                                 Text(member.seniority.label)
                                     .font(.caption)
                                     .padding(.horizontal, 8)
@@ -1094,16 +895,14 @@ private struct TeamManagementView: View {
                                     .background(.tint.opacity(0.15), in: Capsule())
                                     .foregroundStyle(.tint)
                             }
-                            
+
                             Spacer()
-                            
-                            // Delete button
+
                             Button(role: .destructive) {
                                 memberToDelete = member
                                 showingDeleteAlert = true
                             } label: {
-                                Image(systemName: "trash")
-                                    .foregroundStyle(.red)
+                                Image(systemName: "trash").foregroundStyle(.red)
                             }
                             .buttonStyle(.bordered)
                         }
@@ -1115,15 +914,11 @@ private struct TeamManagementView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    Button("Done") { dismiss() }
                 }
             }
             .alert("Delete Member?", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) {
-                    memberToDelete = nil
-                }
+                Button("Cancel", role: .cancel) { memberToDelete = nil }
                 Button("Delete", role: .destructive) {
                     if let member = memberToDelete {
                         store.deleteMember(member, in: context)
@@ -1132,12 +927,27 @@ private struct TeamManagementView: View {
                 }
             } message: {
                 if let member = memberToDelete {
-                    Text("Are you sure you want to delete \(member.name)? All associated data (observations, IDPs, promotion records) will also be deleted.")
+                    Text("Are you sure you want to delete \(member.name)? All associated data will also be deleted.")
                 }
             }
         }
     }
-    
+
+    @ViewBuilder
+    private func avatarView(for member: TeamMember) -> some View {
+        if let avatarImage = member.avatarImage {
+            avatarImage.resizable().scaledToFill()
+        } else if let urlString = member.photoUrl, let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                placeholderAvatar
+            }
+        } else {
+            placeholderAvatar
+        }
+    }
+
     private var placeholderAvatar: some View {
         Image(systemName: "person.crop.circle.fill")
             .resizable()
@@ -1146,7 +956,7 @@ private struct TeamManagementView: View {
     }
 }
 
-// MARK: - Preview ------------------------------------------------------------
+// MARK: - Preview
 
 #Preview {
     NavigationStack {

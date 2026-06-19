@@ -21,6 +21,15 @@ import Foundation
 import SwiftData
 import Observation
 
+// MARK: - MemberSection ------------------------------------------------------
+
+enum MemberSection {
+    case idp
+    case promotion
+}
+
+// MARK: - AppStore -----------------------------------------------------------
+
 @Observable
 final class AppStore {
 
@@ -28,6 +37,7 @@ final class AppStore {
 
     var activeView: ActiveView = .team
     var selectedMemberId: String? = nil
+    var focusedMemberSection: MemberSection? = nil
 
     // MARK: Settings (persisted via UserDefaults / Keychain) ----------------
 
@@ -80,6 +90,11 @@ final class AppStore {
     func setSelectedMember(_ id: String?) {
         selectedMemberId = id
         activeView = id == nil ? .team : .member
+    }
+
+    func navigateToMember(_ id: String, section: MemberSection? = nil) {
+        focusedMemberSection = section
+        setSelectedMember(id)
     }
 
     // MARK: Mutations --------------------------------------------------------

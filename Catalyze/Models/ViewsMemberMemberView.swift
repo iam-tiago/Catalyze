@@ -31,6 +31,7 @@ struct MemberView: View {
                     onEdit: { showingEditForm = true },
                     onDelete: { showingDeleteAlert = true }
                 )
+                .id(memberId)
             } else {
                 MemberNotFoundView()
             }
@@ -67,35 +68,41 @@ private struct MemberDetailContent: View {
     let onDelete: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                MemberHeader(member: member, onEdit: onEdit, onDelete: onDelete)
-                    .padding(.horizontal)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    MemberHeader(member: member, onEdit: onEdit, onDelete: onDelete)
+                        .padding(.horizontal)
 
-                // Sections
-                VStack(spacing: 16) {
-                    // 1. Strengths & Growth Areas → Behavioral Profile radar
-                    TagSection(member: member)
-                    MemberRadar(member: member)
-                    
-                    // 2. Tech Skills → Tech Skills radar
-                    TechSkillsSection(member: member)
-                    TechnicalRadar(member: member)
-                    
-                    // 3. Tech Stack → distribution bars (for now, just list)
-                    TechnicalStackSection(member: member)
-                    TechStackDistribution(member: member)
-                    
-                    // Other sections
-                    ObservationSection(member: member)
-                    IDPSection(member: member)
-                    PromotionReadinessSection(member: member)
-                    ProfileEvolutionSection(member: member)
+                    // Sections
+                    VStack(spacing: 16) {
+                        // 1. Strengths & Growth Areas → Behavioral Profile radar
+                        TagSection(member: member)
+                        MemberRadar(member: member)
+
+                        // 2. Tech Skills → Tech Skills radar
+                        TechSkillsSection(member: member)
+                        TechnicalRadar(member: member)
+
+                        // 3. Tech Stack → distribution bars (for now, just list)
+                        TechnicalStackSection(member: member)
+                        TechStackDistribution(member: member)
+
+                        // Other sections
+                        ObservationSection(member: member)
+                        IDPSection(member: member)
+                            .id("section-idp")
+                        PromotionReadinessSection(member: member)
+                            .id("section-promotion")
+                        ProfileEvolutionSection(member: member)
+                    }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .padding(.vertical)
             }
-            .padding(.vertical)
+            .onAppear { scrollToFocused(proxy) }
+            .onChange(of: store.focusedMemberSection) { _, _ in scrollToFocused(proxy) }
         }
         .navigationTitle(member.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -106,6 +113,20 @@ private struct MemberDetailContent: View {
                 } label: {
                     Label("Back to Team", systemImage: "chevron.left")
                 }
+            }
+        }
+    }
+
+    private func scrollToFocused(_ proxy: ScrollViewProxy) {
+        guard let section = store.focusedMemberSection else { return }
+        let anchor: String = switch section {
+        case .idp:       "section-idp"
+        case .promotion: "section-promotion"
+        }
+        store.focusedMemberSection = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.smooth) {
+                proxy.scrollTo(anchor, anchor: .top)
             }
         }
     }
