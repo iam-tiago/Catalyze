@@ -153,7 +153,7 @@ struct SettingsView: View {
             let members = try context.fetch(descriptor)
 
             let exportData = ExportData(
-                version: "1.0.0",
+                version: "1.1.0",
                 exportDate: Date(),
                 emProfile: store.emProfile,
                 members: members.map { member in
@@ -167,9 +167,47 @@ struct SettingsView: View {
                         mentorId: member.mentor?.id,
                         mentorName: member.mentorName,
                         externalMentees: member.externalMentees,
-                        stack: (member.stack ?? []).map { ExportStackEntry(tag: $0.tagRaw, level: $0.levelRaw) },
-                        tags: (member.tags ?? []).map { ExportTag(kind: $0.kindRaw, category: $0.category, intensity: $0.intensityRaw, note: $0.note, createdAt: $0.createdAt) },
-                        observations: (member.observations ?? []).map { ExportObservation(text: $0.text, context: $0.contextRaw, createdAt: $0.createdAt) },
+                        stack: (member.stack ?? []).map {
+                            ExportStackEntry(tag: $0.tagRaw, level: $0.levelRaw)
+                        },
+                        tags: (member.tags ?? []).map {
+                            ExportTag(kind: $0.kindRaw, category: $0.category, intensity: $0.intensityRaw, note: $0.note, createdAt: $0.createdAt)
+                        },
+                        observations: (member.observations ?? []).sorted(by: { $0.createdAt < $1.createdAt }).map {
+                            ExportObservation(text: $0.text, context: $0.contextRaw, createdAt: $0.createdAt)
+                        },
+                        idps: (member.idps ?? []).map { idp in
+                            ExportIDP(
+                                id: idp.id,
+                                title: idp.title,
+                                objective: idp.objective,
+                                linkedGrowthAreaId: idp.linkedGrowthAreaId,
+                                targetDate: idp.targetDate,
+                                status: idp.statusRaw,
+                                actions: idp.sortedActions.map {
+                                    ExportIDPAction(id: $0.id, text: $0.text, done: $0.done, sortIndex: $0.sortIndex)
+                                },
+                                createdAt: idp.createdAt,
+                                updatedAt: idp.updatedAt
+                            )
+                        },
+                        promotionRecords: (member.promotionRecords ?? []).map { record in
+                            ExportPromotionRecord(
+                                id: record.id,
+                                targetTier: record.targetTierRaw,
+                                status: record.statusRaw,
+                                aiAssessment: record.aiAssessment,
+                                notes: record.notes,
+                                criteria: record.sortedCriteria.map {
+                                    ExportPromotionCriterion(id: $0.id, category: $0.category, label: $0.label, met: $0.met, note: $0.note, isCustom: $0.isCustom, sortIndex: $0.sortIndex)
+                                },
+                                createdAt: record.createdAt,
+                                updatedAt: record.updatedAt
+                            )
+                        },
+                        profileEvents: (member.profileEvents ?? []).sorted(by: { $0.createdAt < $1.createdAt }).map {
+                            ExportProfileEvent(type: $0.typeRaw, category: $0.category, intensityBefore: $0.intensityBeforeRaw, intensityAfter: $0.intensityAfterRaw, createdAt: $0.createdAt)
+                        },
                         createdAt: member.createdAt,
                         updatedAt: member.updatedAt
                     )
@@ -225,6 +263,7 @@ struct SettingsView: View {
                     createdAt: exportMember.createdAt,
                     updatedAt: exportMember.updatedAt
                 )
+                member.seniorityRaw = exportMember.seniority  // preserve raw string for custom presets
                 member.photoData = exportMember.photoData
                 member.mentorName = exportMember.mentorName
                 member.externalMentees = exportMember.externalMentees
@@ -246,6 +285,63 @@ struct SettingsView: View {
                     o.member = member
                     context.insert(o)
                     return o
+                }
+                member.idps = exportMember.idps.map { exportIDP in
+                    let idp = DevelopmentPlan(
+                        id: exportIDP.id,
+                        memberId: member.id,
+                        title: exportIDP.title,
+                        linkedGrowthAreaId: exportIDP.linkedGrowthAreaId,
+                        objective: exportIDP.objective,
+                        targetDate: exportIDP.targetDate,
+                        status: IDPStatus(rawValue: exportIDP.status) ?? .active,
+                        createdAt: exportIDP.createdAt,
+                        updatedAt: exportIDP.updatedAt
+                    )
+                    idp.member = member
+                    idp.actions = exportIDP.actions.map {
+                        let action = IDPAction(id: $0.id, text: $0.text, done: $0.done, sortIndex: $0.sortIndex)
+                        action.plan = idp
+                        context.insert(action)
+                        return action
+                    }
+                    context.insert(idp)
+                    return idp
+                }
+                member.promotionRecords = exportMember.promotionRecords.map { exportRecord in
+                    let record = PromotionReadiness(
+                        id: exportRecord.id,
+                        memberId: member.id,
+                        targetTier: Seniority(rawValue: exportRecord.targetTier) ?? .t2_1,
+                        status: PromotionStatus(rawValue: exportRecord.status) ?? .notReady,
+                        aiAssessment: exportRecord.aiAssessment,
+                        notes: exportRecord.notes,
+                        createdAt: exportRecord.createdAt,
+                        updatedAt: exportRecord.updatedAt
+                    )
+                    record.targetTierRaw = exportRecord.targetTier  // preserve raw string for custom presets
+                    record.member = member
+                    record.criteria = exportRecord.criteria.map {
+                        let c = PromotionCriterion(id: $0.id, category: $0.category, label: $0.label, met: $0.met, note: $0.note, isCustom: $0.isCustom, sortIndex: $0.sortIndex)
+                        c.record = record
+                        context.insert(c)
+                        return c
+                    }
+                    context.insert(record)
+                    return record
+                }
+                member.profileEvents = exportMember.profileEvents.map {
+                    let e = ProfileEvent(
+                        memberId: member.id,
+                        type: ProfileEventType(rawValue: $0.type) ?? .strengthAdded,
+                        category: $0.category,
+                        intensityBefore: $0.intensityBefore.flatMap { Intensity(rawValue: $0) },
+                        intensityAfter: $0.intensityAfter.flatMap { Intensity(rawValue: $0) },
+                        createdAt: $0.createdAt
+                    )
+                    e.member = member
+                    context.insert(e)
+                    return e
                 }
 
                 context.insert(member)
@@ -286,13 +382,15 @@ private struct SettingsSidebar: View {
             HStack {
                 Text("Settings")
                     .font(CFont.headline)
-                    .foregroundStyle(CColor.neutral900)
+                    .foregroundStyle(.white)
                 Spacer()
             }
             .padding(.horizontal, CSpace.lg)
             .padding(.vertical, CSpace.md)
 
-            Divider()
+            Rectangle()
+                .fill(.white.opacity(0.10))
+                .frame(height: 0.5)
 
             ScrollView {
                 VStack(spacing: 2) {
@@ -306,7 +404,44 @@ private struct SettingsSidebar: View {
             }
         }
         .frame(width: 220)
-        .background(CColor.neutral50)
+        .background {
+            ZStack {
+                MeshGradient(width: 3, height: 3, points: [
+                    [0.0, 0.0], [0.5, 0.0], [1.0, 0.0],
+                    [0.0, 0.5], [0.5, 0.5], [1.0, 0.5],
+                    [0.0, 1.0], [0.5, 1.0], [1.0, 1.0]
+                ], colors: [
+                    Color(red: 0.063, green: 0.031, blue: 0.157),
+                    Color(red: 0.051, green: 0.051, blue: 0.122),
+                    Color(red: 0.039, green: 0.039, blue: 0.102),
+                    Color(red: 0.102, green: 0.063, blue: 0.227),
+                    Color(red: 0.102, green: 0.063, blue: 0.271),
+                    Color(red: 0.059, green: 0.039, blue: 0.157),
+                    Color(red: 0.039, green: 0.031, blue: 0.094),
+                    Color(red: 0.071, green: 0.031, blue: 0.165),
+                    Color(red: 0.031, green: 0.031, blue: 0.078)
+                ])
+
+                Canvas { ctx, size in
+                    let spacing: CGFloat = 22
+                    let radius: CGFloat = 0.85
+                    var x = spacing / 2
+                    while x < size.width {
+                        var y = spacing / 2
+                        while y < size.height {
+                            ctx.fill(
+                                Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
+                                with: .color(.white)
+                            )
+                            y += spacing
+                        }
+                        x += spacing
+                    }
+                }
+                .opacity(0.06)
+            }
+            .ignoresSafeArea()
+        }
     }
 }
 
@@ -327,16 +462,25 @@ private struct SidebarRow: View {
 
                 Text(section.title)
                     .font(CFont.subheadline)
-                    .foregroundStyle(CColor.neutral900)
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
 
                 Spacer()
             }
             .padding(.horizontal, CSpace.sm)
             .padding(.vertical, CSpace.sm)
-            .background(isSelected ? CColor.brandPrimaryLight : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: CRadius.sm))
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: CRadius.sm)
+                        .fill(.white.opacity(0.10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CRadius.sm)
+                                .stroke(.white.opacity(0.08), lineWidth: 0.5)
+                        )
+                }
+            }
         }
         .buttonStyle(.plain)
+        .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
     }
 }
 
@@ -806,6 +950,9 @@ struct ExportMember: Codable {
     let stack: [ExportStackEntry]
     let tags: [ExportTag]
     let observations: [ExportObservation]
+    let idps: [ExportIDP]
+    let promotionRecords: [ExportPromotionRecord]
+    let profileEvents: [ExportProfileEvent]
     let createdAt: Date
     let updatedAt: Date
 }
@@ -826,6 +973,54 @@ struct ExportTag: Codable {
 struct ExportObservation: Codable {
     let text: String
     let context: String
+    let createdAt: Date
+}
+
+struct ExportIDP: Codable {
+    let id: String
+    let title: String
+    let objective: String
+    let linkedGrowthAreaId: String?
+    let targetDate: Date?
+    let status: String
+    let actions: [ExportIDPAction]
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct ExportIDPAction: Codable {
+    let id: String
+    let text: String
+    let done: Bool
+    let sortIndex: Int
+}
+
+struct ExportPromotionRecord: Codable {
+    let id: String
+    let targetTier: String
+    let status: String
+    let aiAssessment: String?
+    let notes: String?
+    let criteria: [ExportPromotionCriterion]
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct ExportPromotionCriterion: Codable {
+    let id: String
+    let category: String
+    let label: String
+    let met: Bool
+    let note: String?
+    let isCustom: Bool
+    let sortIndex: Int
+}
+
+struct ExportProfileEvent: Codable {
+    let type: String
+    let category: String
+    let intensityBefore: String?
+    let intensityAfter: String?
     let createdAt: Date
 }
 

@@ -2,9 +2,6 @@
 //  TeamOverview.swift
 //  Catalyze
 //
-//  Collapsible team dashboard shown above the member grid.
-//  Three preset layouts: Overview, Technical, Growth.
-//
 
 import SwiftUI
 import SwiftData
@@ -44,72 +41,130 @@ struct TeamOverview: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerView
+            heroHeader
 
             if isExpanded {
                 Divider()
-
-                VStack(spacing: CSpace.xl) {
-                    // Layout picker
-                    Picker("Layout", selection: $selectedLayout) {
-                        ForEach(OverviewLayout.allCases, id: \.self) { layout in
-                            Label(layout.label, systemImage: layout.icon).tag(layout)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    // Stats — always visible in all layouts
-                    statsGrid
-
-                    // Layout-specific content
-                    Group {
-                        switch selectedLayout {
-                        case .overview:
-                            TeamRadar()
-                        case .technical:
-                            technicalContent
-                        case .growth:
-                            growthContent
-                        }
-                    }
-                    .transition(.opacity)
-                    .animation(.smooth, value: selectedLayout)
-                }
-                .padding(CSpace.lg)
+                contentSection
             }
         }
-        .background(CColor.neutral0)
         .clipShape(RoundedRectangle(cornerRadius: CRadius.md))
         .cardShadow()
     }
 
-    // MARK: - Header
+    // MARK: - Hero Header
 
-    private var headerView: some View {
+    private var heroHeader: some View {
         Button {
             withAnimation(.smooth) { isExpanded.toggle() }
         } label: {
-            HStack {
-                Label("Team Overview", systemImage: "chart.bar.fill")
-                    .font(CFont.headline)
-                    .foregroundStyle(CColor.neutral900)
+            ZStack(alignment: .topTrailing) {
+                heroBackground.frame(height: 152)
 
-                Spacer()
+                dotGrid
+                    .frame(height: 152)
+                    .opacity(0.06)
+                    .clipped()
 
-                if !isExpanded {
-                    Text("\(members.count) members")
-                        .font(CFont.caption1)
-                        .foregroundStyle(CColor.neutral600)
-                }
-
+                // Chevron top-right
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(CColor.neutral400)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(CSpace.lg)
+
+                // Content bottom-left
+                VStack(alignment: .leading, spacing: CSpace.sm) {
+                    Spacer()
+
+                    VStack(alignment: .leading, spacing: CSpace.xs) {
+                        Text(teamDisplayName)
+                            .font(CFont.title2)
+                            .foregroundStyle(.white)
+
+                        Text("\(members.count) member\(members.count == 1 ? "" : "s")")
+                            .font(CFont.footnote)
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+
+                    HStack(spacing: CSpace.sm) {
+                        HeroPill(icon: "checklist", value: "\(activeIDPsCount)", label: "Active IDPs")
+                        HeroPill(icon: "arrow.up.circle.fill", value: "\(membersInPromotionCount)", label: "In Promotion")
+                    }
+                }
+                .padding(CSpace.lg)
+                .frame(maxWidth: .infinity, maxHeight: 152, alignment: .bottomLeading)
             }
-            .padding(CSpace.lg)
+            .frame(height: 152)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private var heroBackground: some View {
+        MeshGradient(width: 3, height: 3, points: [
+            [0.0, 0.0], [0.5, 0.0], [1.0, 0.0],
+            [0.0, 0.5], [0.5, 0.5], [1.0, 0.5],
+            [0.0, 1.0], [0.5, 1.0], [1.0, 1.0]
+        ], colors: [
+            Color(red: 0.216, green: 0.188, blue: 0.639),
+            Color(red: 0.310, green: 0.275, blue: 0.898),
+            Color(red: 0.357, green: 0.357, blue: 0.839),
+            Color(red: 0.118, green: 0.106, blue: 0.294),
+            Color(red: 0.216, green: 0.188, blue: 0.639),
+            Color(red: 0.310, green: 0.275, blue: 0.898),
+            Color(red: 0.118, green: 0.106, blue: 0.294),
+            Color(red: 0.118, green: 0.106, blue: 0.294),
+            Color(red: 0.192, green: 0.180, blue: 0.506)
+        ])
+    }
+
+    private var dotGrid: some View {
+        Canvas { ctx, size in
+            let spacing: CGFloat = 22
+            let radius: CGFloat = 0.85
+            var x = spacing / 2
+            while x < size.width {
+                var y = spacing / 2
+                while y < size.height {
+                    ctx.fill(
+                        Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
+                        with: .color(.white)
+                    )
+                    y += spacing
+                }
+                x += spacing
+            }
+        }
+    }
+
+    // MARK: - Content Section
+
+    private var contentSection: some View {
+        VStack(spacing: CSpace.xl) {
+            Picker("Layout", selection: $selectedLayout) {
+                ForEach(OverviewLayout.allCases, id: \.self) { layout in
+                    Label(layout.label, systemImage: layout.icon).tag(layout)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            statsGrid
+
+            Group {
+                switch selectedLayout {
+                case .overview:
+                    TeamRadar()
+                case .technical:
+                    technicalContent
+                case .growth:
+                    growthContent
+                }
+            }
+            .transition(.opacity)
+            .animation(.smooth, value: selectedLayout)
+        }
+        .padding(CSpace.lg)
+        .background(CColor.neutral0)
     }
 
     // MARK: - Stats (shared)
@@ -321,6 +376,11 @@ struct TeamOverview: View {
 
     // MARK: - Computed properties
 
+    private var teamDisplayName: String {
+        if let name = store.emProfile.teamName, !name.isEmpty { return name }
+        return "My Team"
+    }
+
     private var activeIDPsCount: Int {
         members.reduce(0) { $0 + (($1.idps ?? []).filter { $0.status == .active }.count) }
     }
@@ -345,6 +405,29 @@ struct TeamOverview: View {
     }
 }
 
+// MARK: - Hero Pill
+
+private struct HeroPill: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+            Text("\(value) \(label)")
+                .font(CFont.caption2)
+        }
+        .foregroundStyle(.white.opacity(0.85))
+        .padding(.horizontal, CSpace.sm + 2)
+        .padding(.vertical, 5)
+        .background(.white.opacity(0.12))
+        .overlay(Capsule().stroke(.white.opacity(0.15), lineWidth: 0.5))
+        .clipShape(Capsule())
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
@@ -353,5 +436,6 @@ struct TeamOverview: View {
             .padding(CSpace.x2l)
     }
     .background(CColor.neutral50)
+    .environment(AppStore())
     .modelContainer(SampleDataProvider.makePreviewContainer())
 }

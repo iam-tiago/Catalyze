@@ -328,7 +328,7 @@ private struct TeamTechnicalRadarChartView: View {
                         .frame(width: 10, height: 10)
                         .overlay {
                             Circle()
-                                .stroke(Color.white, lineWidth: 2)
+                                .stroke(Color(.systemBackground), lineWidth: 2)
                         }
                         .position(coordinate)
                 }
