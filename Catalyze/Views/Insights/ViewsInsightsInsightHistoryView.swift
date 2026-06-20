@@ -254,46 +254,48 @@ struct InsightHistoryView: View {
 private struct InsightHistoryRow: View {
     let insight: Insight
     let memberName: String?
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
-            // Header
-            HStack {
-                // Type badge
-                Text(insight.type.displayName)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, CatalystSpacing.sm)
-                    .padding(.vertical, 4)
-                    .background(insight.type.color.opacity(0.2), in: Capsule())
-                    .foregroundStyle(insight.type.color)
-                
-                Spacer()
-                
-                // Date
-                Text(insight.createdAt, style: .relative)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            // Member name (if applicable)
-            if let memberName {
-                Text(memberName)
+        HStack(spacing: CatalystSpacing.md) {
+            // Left accent strip
+            RoundedRectangle(cornerRadius: 2)
+                .fill(insight.type.color)
+                .frame(width: 3)
+                .padding(.vertical, CatalystSpacing.xs)
+
+            VStack(alignment: .leading, spacing: CatalystSpacing.sm) {
+                HStack {
+                    Text(insight.type.displayName)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, CatalystSpacing.sm)
+                        .padding(.vertical, 4)
+                        .background(insight.type.color.opacity(0.12), in: Capsule())
+                        .foregroundStyle(insight.type.color)
+
+                    Spacer()
+
+                    Text(insight.createdAt, style: .relative)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let memberName {
+                    Text(memberName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+
+                Text(insight.prompt)
                     .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                Text(insight.response)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(2)
             }
-            
-            // Prompt preview
-            Text(insight.prompt)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-            
-            // Response preview
-            Text(insight.response)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .lineLimit(3)
         }
         .padding(.vertical, CatalystSpacing.xs)
     }
@@ -373,15 +375,7 @@ private struct InsightDetailView: View {
                     }
                     
                     // Response card
-                    CatalystCard {
-                        VStack(alignment: .leading, spacing: CatalystSpacing.lg) {
-                            CatalystCardHeader("Manager Assistant Insight", icon: "sparkles")
-                            
-                            MarkdownText(markdown: insight.response)
-                                .font(CatalystTypography.body)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
+                    AIOutputCard(text: insight.response, isGenerating: false)
                 }
                 .padding(CatalystSpacing.xl)
             }

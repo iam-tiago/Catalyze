@@ -382,13 +382,15 @@ private struct SettingsSidebar: View {
             HStack {
                 Text("Settings")
                     .font(CFont.headline)
-                    .foregroundStyle(CColor.neutral900)
+                    .foregroundStyle(.white)
                 Spacer()
             }
             .padding(.horizontal, CSpace.lg)
             .padding(.vertical, CSpace.md)
 
-            Divider()
+            Rectangle()
+                .fill(.white.opacity(0.10))
+                .frame(height: 0.5)
 
             ScrollView {
                 VStack(spacing: 2) {
@@ -402,7 +404,44 @@ private struct SettingsSidebar: View {
             }
         }
         .frame(width: 220)
-        .background(CColor.neutral50)
+        .background {
+            ZStack {
+                MeshGradient(width: 3, height: 3, points: [
+                    [0.0, 0.0], [0.5, 0.0], [1.0, 0.0],
+                    [0.0, 0.5], [0.5, 0.5], [1.0, 0.5],
+                    [0.0, 1.0], [0.5, 1.0], [1.0, 1.0]
+                ], colors: [
+                    Color(red: 0.063, green: 0.031, blue: 0.157),
+                    Color(red: 0.051, green: 0.051, blue: 0.122),
+                    Color(red: 0.039, green: 0.039, blue: 0.102),
+                    Color(red: 0.102, green: 0.063, blue: 0.227),
+                    Color(red: 0.102, green: 0.063, blue: 0.271),
+                    Color(red: 0.059, green: 0.039, blue: 0.157),
+                    Color(red: 0.039, green: 0.031, blue: 0.094),
+                    Color(red: 0.071, green: 0.031, blue: 0.165),
+                    Color(red: 0.031, green: 0.031, blue: 0.078)
+                ])
+
+                Canvas { ctx, size in
+                    let spacing: CGFloat = 22
+                    let radius: CGFloat = 0.85
+                    var x = spacing / 2
+                    while x < size.width {
+                        var y = spacing / 2
+                        while y < size.height {
+                            ctx.fill(
+                                Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
+                                with: .color(.white)
+                            )
+                            y += spacing
+                        }
+                        x += spacing
+                    }
+                }
+                .opacity(0.06)
+            }
+            .ignoresSafeArea()
+        }
     }
 }
 
@@ -423,16 +462,25 @@ private struct SidebarRow: View {
 
                 Text(section.title)
                     .font(CFont.subheadline)
-                    .foregroundStyle(CColor.neutral900)
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
 
                 Spacer()
             }
             .padding(.horizontal, CSpace.sm)
             .padding(.vertical, CSpace.sm)
-            .background(isSelected ? CColor.brandPrimaryLight : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: CRadius.sm))
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: CRadius.sm)
+                        .fill(.white.opacity(0.10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CRadius.sm)
+                                .stroke(.white.opacity(0.08), lineWidth: 0.5)
+                        )
+                }
+            }
         }
         .buttonStyle(.plain)
+        .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
     }
 }
 

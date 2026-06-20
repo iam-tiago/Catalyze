@@ -79,18 +79,32 @@ struct TeamView: View {
     }
 }
 
+// MARK: - Seniority Color Helper
+
+private func seniorityAccentColor(for seniority: Seniority) -> Color {
+    switch seniority {
+    case .t1_3:
+        return Color(red: 0.851, green: 0.467, blue: 0.024)
+    case .t2_1, .t2_2, .t2_3:
+        return Color(red: 0.231, green: 0.510, blue: 0.965)
+    case .t3_1, .t3_2, .t3_3:
+        return CColor.brandPrimary
+    case .t4:
+        return Color(red: 0.063, green: 0.624, blue: 0.506)
+    }
+}
+
 // MARK: - Team Member Card --------------------------------------------------
-// Using Catalyze Design System v1.0
 
 private struct TeamMemberCard: View {
     let member: TeamMember
     @State private var isHovered = false
 
+    private var accentColor: Color { seniorityAccentColor(for: member.seniority) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: CSpace.md) {
-            // Header: avatar + name + tier
             HStack(spacing: CSpace.md) {
-                // Avatar com borda colorida
                 avatarView
                     .frame(width: 56, height: 56)
                     .clipShape(Circle())
@@ -98,7 +112,7 @@ private struct TeamMemberCard: View {
                         Circle()
                             .strokeBorder(
                                 LinearGradient(
-                                    colors: [CColor.brandPrimary, CColor.brandPrimary.opacity(0.3)],
+                                    colors: [accentColor, accentColor.opacity(0.3)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -106,7 +120,6 @@ private struct TeamMemberCard: View {
                             )
                     }
 
-                // Name + role
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.name)
                         .font(CFont.headline)
@@ -121,11 +134,9 @@ private struct TeamMemberCard: View {
 
                 Spacer(minLength: 0)
 
-                // Tier badge
-                TierBadge(tier: member.seniority.label)
+                TierBadge(tier: member.seniority.label, foreground: accentColor, background: accentColor.opacity(0.10))
             }
 
-            // Top 2 strengths
             if !topStrengths.isEmpty {
                 Divider()
 
@@ -147,38 +158,29 @@ private struct TeamMemberCard: View {
         }
         .padding(CSpace.lg)
         .background {
-            // Background com gradiente sutil no hover
             RoundedRectangle(cornerRadius: CRadius.md)
                 .fill(isHovered ? CGradient.cardHover : LinearGradient(colors: [CColor.neutral0], startPoint: .top, endPoint: .bottom))
         }
         .overlay {
-            // Borda sutil que aparece no hover
             RoundedRectangle(cornerRadius: CRadius.md)
                 .strokeBorder(
-                    isHovered ? CColor.brandPrimary.opacity(0.3) : Color.clear,
+                    isHovered ? accentColor.opacity(0.35) : Color.clear,
                     lineWidth: 1.5
                 )
         }
         .cardShadow()
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
+        .onHover { hovering in isHovered = hovering }
     }
 
     private var avatarView: some View {
         Group {
             if let avatarImage = member.avatarImage {
-                avatarImage
-                    .resizable()
-                    .scaledToFill()
-            } else if let urlString = member.photoUrl,
-                      let url = URL(string: urlString) {
+                avatarImage.resizable().scaledToFill()
+            } else if let urlString = member.photoUrl, let url = URL(string: urlString) {
                 AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .scaledToFill()
+                    image.resizable().scaledToFill()
                 } placeholder: {
                     placeholderAvatar
                 }
@@ -190,24 +192,21 @@ private struct TeamMemberCard: View {
 
     private var placeholderAvatar: some View {
         ZStack {
-            Circle()
-                .fill(CColor.brandPrimaryLight)
+            Circle().fill(accentColor.opacity(0.12))
             Image(systemName: "person.fill")
                 .font(.system(size: 28))
-                .foregroundStyle(CColor.brandPrimary)
+                .foregroundStyle(accentColor)
         }
     }
 
-    private var topStrengths: [StrengthWeakness] {
-        Array(member.strengths.prefix(2))
-    }
-    
+    private var topStrengths: [StrengthWeakness] { Array(member.strengths.prefix(2)) }
+
     private func mapIntensity(_ intensity: Intensity) -> SkillIntensity {
         switch intensity {
         case .emerging: return .emerging
         case .solid: return .solid
         case .strong: return .strong
-        case .developing, .blocking: return .emerging // Weaknesses map to emerging
+        case .developing, .blocking: return .emerging
         }
     }
 }

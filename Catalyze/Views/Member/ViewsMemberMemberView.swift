@@ -139,147 +139,212 @@ private struct MemberHeader: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
-    var body: some View {
-        VStack(spacing: 16) {
-            // Avatar + basic info
-            HStack(spacing: 16) {
-                // Avatar
-                Group {
-                    if let avatarImage = member.avatarImage {
-                        avatarImage
-                            .resizable()
-                            .scaledToFill()
-                    } else if let urlString = member.photoUrl,
-                              let url = URL(string: urlString) {
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
-                            placeholderAvatar
-                        }
-                    } else {
-                        placeholderAvatar
-                    }
-                }
-                .frame(width: 80, height: 80)
-                .clipShape(Circle())
+    private var hasMentorship: Bool {
+        member.mentor != nil || member.mentorName != nil || !member.externalMentees.isEmpty
+    }
 
-                // Name + role + seniority
-                VStack(alignment: .leading, spacing: 6) {
+    var body: some View {
+        VStack(spacing: 0) {
+            heroSection
+
+            VStack(spacing: CSpace.md) {
+                HStack(spacing: CSpace.md) {
+                    Button { onEdit() } label: {
+                        Label("Edit", systemImage: "pencil").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+
+                    Button(role: .destructive) { onDelete() } label: {
+                        Label("Delete", systemImage: "trash").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+
+                if hasMentorship {
+                    Divider()
+                    mentorshipSection
+                }
+            }
+            .padding(CSpace.lg)
+            .background(CColor.neutral0)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CRadius.md))
+        .cardShadow()
+    }
+
+    // MARK: Hero
+
+    private var heroSection: some View {
+        ZStack {
+            heroBackground
+
+            Canvas { ctx, size in
+                let spacing: CGFloat = 22
+                let radius: CGFloat = 0.85
+                var x = spacing / 2
+                while x < size.width {
+                    var y = spacing / 2
+                    while y < size.height {
+                        ctx.fill(
+                            Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
+                            with: .color(.white)
+                        )
+                        y += spacing
+                    }
+                    x += spacing
+                }
+            }
+            .opacity(0.06)
+
+            VStack(spacing: CSpace.md) {
+                avatarView
+                    .frame(width: 80, height: 80)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.3), lineWidth: 3))
+                    .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
+
+                VStack(spacing: 4) {
                     Text(member.name)
-                        .font(.title2.bold())
+                        .font(CFont.title2)
+                        .foregroundStyle(.white)
 
                     Text(member.role)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-
-                    // Seniority chip
-                    HStack(spacing: 8) {
-                        Text(member.seniority.label)
-                            .font(.caption.weight(.medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.tint.opacity(0.15), in: Capsule())
-                            .foregroundStyle(.tint)
-
-                        // Stack count badge
-                        if let stack = member.stack, !stack.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                    .font(.caption2)
-                                Text("\(stack.count)")
-                                    .font(.caption.weight(.medium))
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(.secondary.opacity(0.1), in: Capsule())
-                            .foregroundStyle(.secondary)
-                        }
-                    }
+                        .font(CFont.footnote)
+                        .foregroundStyle(.white.opacity(0.6))
                 }
 
-                Spacer()
+                HStack(spacing: CSpace.sm) {
+                    Text(member.seniority.label)
+                        .font(CFont.caption2)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, CSpace.md)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.15))
+                        .overlay(Capsule().stroke(.white.opacity(0.2), lineWidth: 0.5))
+                        .clipShape(Capsule())
+
+                    if let stack = member.stack, !stack.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                .font(.system(size: 10))
+                            Text("\(stack.count)")
+                                .font(CFont.caption2)
+                        }
+                        .foregroundStyle(.white.opacity(0.7))
+                        .padding(.horizontal, CSpace.sm + 2)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.10))
+                        .clipShape(Capsule())
+                    }
+                }
             }
-
-            // Action buttons
-            HStack(spacing: 12) {
-                Button {
-                    onEdit()
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-
-            // Mentorship info
-            if member.mentor != nil || member.mentorName != nil || !member.externalMentees.isEmpty {
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    if let mentor = member.mentor {
-                        HStack {
-                            Image(systemName: "person.fill.checkmark")
-                                .foregroundStyle(.secondary)
-                            Text("Mentored by:")
-                                .foregroundStyle(.secondary)
-                            Text(mentor.name)
-                                .fontWeight(.medium)
-                        }
-                        .font(.subheadline)
-                    }
-
-                    if let externalMentor = member.mentorName {
-                        HStack {
-                            Image(systemName: "person.fill.checkmark")
-                                .foregroundStyle(.secondary)
-                            Text("External mentor:")
-                                .foregroundStyle(.secondary)
-                            Text(externalMentor)
-                                .fontWeight(.medium)
-                        }
-                        .font(.subheadline)
-                    }
-
-                    if !member.externalMentees.isEmpty {
-                        HStack(alignment: .top) {
-                            Image(systemName: "person.2.fill")
-                                .foregroundStyle(.secondary)
-                            Text("Mentoring:")
-                                .foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                ForEach(member.externalMentees, id: \.self) { mentee in
-                                    Text(mentee)
-                                        .fontWeight(.medium)
-                                }
-                            }
-                        }
-                        .font(.subheadline)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .padding(.vertical, CSpace.x2l)
         }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var heroBackground: some View {
+        MeshGradient(width: 2, height: 2, points: [
+            [0, 0], [1, 0],
+            [0, 1], [1, 1]
+        ], colors: gradientColors)
+    }
+
+    private var gradientColors: [Color] {
+        switch member.seniority {
+        case .t1_3:
+            return [
+                Color(red: 0.361, green: 0.157, blue: 0.035),
+                Color(red: 0.573, green: 0.278, blue: 0.043),
+                Color(red: 0.573, green: 0.278, blue: 0.043),
+                Color(red: 0.851, green: 0.467, blue: 0.024)
+            ]
+        case .t2_1, .t2_2, .t2_3:
+            return [
+                Color(red: 0.075, green: 0.196, blue: 0.549),
+                Color(red: 0.114, green: 0.314, blue: 0.745),
+                Color(red: 0.114, green: 0.314, blue: 0.745),
+                Color(red: 0.231, green: 0.510, blue: 0.965)
+            ]
+        case .t3_1, .t3_2, .t3_3:
+            return [
+                Color(red: 0.118, green: 0.106, blue: 0.294),
+                Color(red: 0.216, green: 0.188, blue: 0.639),
+                Color(red: 0.216, green: 0.188, blue: 0.639),
+                Color(red: 0.357, green: 0.357, blue: 0.839)
+            ]
+        case .t4:
+            return [
+                Color(red: 0.024, green: 0.235, blue: 0.180),
+                Color(red: 0.020, green: 0.369, blue: 0.275),
+                Color(red: 0.020, green: 0.369, blue: 0.275),
+                Color(red: 0.063, green: 0.624, blue: 0.506)
+            ]
+        }
+    }
+
+    // MARK: Avatar
+
+    @ViewBuilder
+    private var avatarView: some View {
+        if let avatarImage = member.avatarImage {
+            avatarImage.resizable().scaledToFill()
+        } else if let urlString = member.photoUrl, let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                placeholderAvatar
+            }
+        } else {
+            placeholderAvatar
+        }
     }
 
     private var placeholderAvatar: some View {
-        Image(systemName: "person.crop.circle.fill")
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(.tint.opacity(0.5))
+        ZStack {
+            Circle().fill(.white.opacity(0.15))
+            Image(systemName: "person.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+    }
+
+    // MARK: Mentorship
+
+    private var mentorshipSection: some View {
+        VStack(alignment: .leading, spacing: CSpace.sm) {
+            if let mentor = member.mentor {
+                MentorRow(icon: "person.fill.checkmark", label: "Mentored by", value: mentor.name)
+            }
+            if let external = member.mentorName {
+                MentorRow(icon: "person.fill.checkmark", label: "External mentor", value: external)
+            }
+            if !member.externalMentees.isEmpty {
+                MentorRow(icon: "person.2.fill", label: "Mentoring", value: member.externalMentees.joined(separator: ", "))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct MentorRow: View {
+    let icon: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: CSpace.sm) {
+            Image(systemName: icon)
+                .foregroundStyle(CColor.neutral400)
+                .frame(width: 16)
+            Text(label + ":")
+                .foregroundStyle(CColor.neutral600)
+            Text(value)
+                .fontWeight(.medium)
+                .foregroundStyle(CColor.neutral900)
+        }
+        .font(CFont.subheadline)
     }
 }
 

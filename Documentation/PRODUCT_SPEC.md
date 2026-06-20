@@ -1,7 +1,7 @@
 # Catalyze — Product Specification
 
-**Version:** 1.1  
-**Last updated:** 2026-06-18  
+**Version:** 1.2  
+**Last updated:** 2026-06-19  
 **Status:** Active  
 
 This document describes **what Catalyze does** — features, data model, business rules, and user flows — independently of any implementation platform. It is the source of truth for building a new version of Catalyze on any stack (web, mobile, desktop).
@@ -267,14 +267,16 @@ The EM's own identity, stored separately from the team roster.
 ### 4.1 Team Section
 
 **Team grid:** Shows all members as cards, sorted by name. Each card displays:
-- Avatar (photo or initials fallback)
+- Avatar (photo or initials fallback) with seniority-colored ring
 - Name + role
-- Seniority badge (color-coded from active SeniorityLevel)
+- Seniority badge (color-coded by tier: T1 amber, T2 blue, T3 indigo, T4 emerald)
 - Top 2 behavioral strengths with intensity indicator
 
 #### Team Overview Dashboard
 
-A collapsible panel above the grid with three preset layouts the user can toggle between:
+A panel above the grid composed of a **hero banner** (always visible) and expandable content (three preset layouts).
+
+**Hero banner** shows: team name, member count, active IDPs count, and members in promotion at a glance. Tapping collapses/expands the detail content.
 
 **Behavioral layout** (default)
 - 3 stat cards: Team Size · Active IDPs · In Promotion
@@ -312,7 +314,7 @@ Fields: name, role, seniority (from active SeniorityLevel list), photo, internal
 
 ### 4.2 Insights Section
 
-Five AI-powered insight types, each with dedicated input controls and a streaming output area. Completed insights are saved to history.
+Five AI-powered insight types, each with dedicated input controls and a streaming output area. Completed insights are saved to history and browsable via the History button.
 
 | Type | Input | Output |
 |---|---|---|
@@ -322,7 +324,9 @@ Five AI-powered insight types, each with dedicated input controls and a streamin
 | **1:1 Prep** | Member picker | Key topics · Questions to ask · Follow-ups |
 | **Performance Review** | Member picker | Summary · Key accomplishments · Areas for growth · Goals |
 
-All outputs are markdown-formatted and rendered with heading/bold/list support.
+All outputs are markdown-formatted and rendered with heading/bold/list support. The AI response card has a distinctive dark visual treatment to separate it from the input area.
+
+**Insight History:** All generated insights are saved and browsable. Filterable by type and member. Each entry shows a colored type badge and response preview.
 
 **Context passed to AI:**
 - Individual / 1:1 Prep / Perf Review: member profile (name, role, seniority, strengths, weaknesses, observations, IDPs)
@@ -482,13 +486,12 @@ Each member has behavioral strengths/weaknesses, tech stack, observations (multi
 | Single EM | No multi-user or team sharing |
 | No notifications | IDP target dates, 1:1 reminders — not yet implemented |
 | No bulk operations | No multi-select for batch edits |
-| Export/Import | JSON export/import present but basic |
 | API key per device | Deliberate security decision — not synced |
 | No offline AI indicator | App doesn't show connectivity status for AI calls |
+| Photo from URL only | PhotosPicker not yet integrated; avatar requires a URL |
 
 **Potential future features:**
 - PhotosPicker integration for member avatars
-- Insights history browsable in UI
 - Local notifications for IDP deadlines
 - Custom fields on member profiles
 - Collaboration mode (shared data between multiple EMs)

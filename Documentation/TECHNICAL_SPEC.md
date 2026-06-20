@@ -1,9 +1,9 @@
 # Catalyze for iPad — Technical Specification
 
-**Version:** 1.1.0  
-**Platform:** iPadOS 17.0+  
+**Version:** 1.2.0  
+**Platform:** iPadOS 26.0+  
 **Language:** Swift 6.0  
-**Frameworks:** SwiftUI, SwiftData, Swift Charts, CloudKit  
+**Frameworks:** SwiftUI, SwiftData, Swift Charts, CloudKit, MeshGradient  
 
 ---
 
@@ -71,15 +71,15 @@ Catalyze/
   
   Views/
     Layout/
-      AppLayout.swift          — NavigationSplitView root (sidebar + detail)
+      AppLayout.swift          — NavigationSplitView root (dark sidebar + detail)
     
     Team/
       TeamView.swift           — Member grid + toolbar
-      TeamOverview.swift       — Collapsible dashboard (3 layout presets)
+      TeamOverview.swift       — Hero banner + collapsible dashboard (3 layout presets)
       MemberForm.swift         — Add/edit member sheet
     
     Member/
-      MemberView.swift         — Member detail page (header + sections, ScrollViewReader)
+      MemberView.swift         — Member detail page (gradient header + sections, ScrollViewReader)
       TagSection.swift         — Strengths & growth areas
       TagForm.swift            — Add/edit tag sheet
       ObservationSection.swift — Observations list
@@ -99,13 +99,23 @@ Catalyze/
       TechStackDistribution.swift     — Stack distribution for single member
     
     Insights/
-      InsightsView.swift       — TabView with 5 insight types
+      InsightsView.swift       — 5 insight tabs + streaming output
+      InsightHistoryView.swift — Browsable history with filter + detail view
     
     Settings/
-      SettingsView.swift       — EM profile + API credentials + Data Management
+      SettingsView.swift       — Two-column layout: dark sidebar + section content
     
     Search/
       GlobalSearch.swift       — ⌘K global search (members, observations, IDPs)
+  
+  DesignSystem/
+    CatalyzeTokens.swift          — CColor, CFont, CSpace, CRadius, CGradient (adaptive)
+    CatalyzeComponents.swift      — StatCard, TierBadge, SkillChip, EmptyState, etc.
+    DesignSystemCatalystTokens.swift   — CatalystSpacing, CatalystTypography, etc.
+    DesignSystemCatalystCard.swift     — CatalystCard, CatalystCardHeader
+    DesignSystemCatalystButton.swift   — CatalystPrimaryButton
+    DesignSystemCatalystEmptyState.swift — CatalystEmptyState
+    DesignSystemCatalystInsightLayout.swift — CatalystInsightLayout, AIOutputCard
 ```
 
 ---
@@ -629,25 +639,35 @@ Five prompt functions:
 
 ### 7.1 Navigation
 
-**Root:** `NavigationSplitView` (iPad-optimized)
-- **Sidebar:** Team / Insights / Settings (List with buttons)
-- **Detail:** switches based on `AppStore.activeView`
+**Root:** `NavigationSplitView(.balanced)` (iPad-optimized)
+
+**Sidebar** — always-dark visual treatment (intentional, theme-independent):
+- Background: `MeshGradient` 3×3 (deep purple `#100828` → navy `#0a0a1a` → near-black)
+- Dot grid overlay via `Canvas` at 6% opacity
+- Nav items: custom `SidebarNavItem` — white text, active state `white.opacity(0.10)` + border
+- `.toolbarBackground(.hidden)` + `.toolbarColorScheme(.dark)` → collapse button adapts
 
 **EM Profile Card** (bottom of sidebar):
-- Shows avatar, name, role
+- Shows avatar (36pt circle), name, role
+- Translucent dark card (`white.opacity(0.07)` + border)
 - Tappable → navigates to Settings
+
+**Detail pane:** switches based on `AppStore.activeView`
 
 ### 7.2 Team Flow
 
 **TeamView:**
 - `LazyVGrid` with adaptive columns (minimum 280pt)
-- Each `MemberCard` shows avatar, name, role, seniority chip, top 2 strengths
+- Each `TeamMemberCard` shows avatar, name, role, seniority badge, top 2 strengths
+- **Seniority color coding** — accent color derived from tier:
+  - T1: amber `#D97706` · T2: blue `#3B82F6` · T3: brand indigo `#5B5BD6` · T4: emerald `#10B981`
+  - Applied to: avatar ring gradient, placeholder icon, TierBadge, hover border
 - Toolbar: "+" button → `MemberForm`
 - Empty state: friendly CTA (only when no members exist)
 
 ### 7.3 TeamOverview (Layout Presets)
 
-Collapsible panel above the member grid. Has three preset layouts toggled via a segmented `Picker`.
+Collapsible panel above the member grid. Composed of a persistent **hero banner** + expandable content section.
 
 ```swift
 enum OverviewLayout: String, CaseIterable {
@@ -659,9 +679,16 @@ enum OverviewLayout: String, CaseIterable {
 
 **Persistence:** `@AppStorage("teamOverviewLayout") private var selectedLayout: OverviewLayout = .overview`
 
-**Shared elements (all layouts):**
-- Header: "Team Overview" with collapse/expand chevron
+**Hero banner** (152pt, always visible):
+- `MeshGradient` 2×2: indigo `#3730a3` → brand `#5B5BD6` → dark indigo `#1e1b4b`
+- Dot grid overlay 6%
+- Team name (title2, white) + member count subtitle
+- Two `HeroPill` capsules: Active IDPs count · In Promotion count
+- Collapse/expand chevron top-right; tapping toggles content section
+
+**Content section** (expandable, white `CColor.neutral0` background):
 - 3 stat cards: Team Size · Active IDPs · In Promotion
+- Layout picker (Behavioral / Technical / Growth)
 
 **Behavioral layout** (`.overview`):
 - `TeamRadar` — aggregated behavioral radar
@@ -716,6 +743,14 @@ private func scrollToFocused(_ proxy: ScrollViewProxy) {
 
 The 0.35s delay lets the view hierarchy settle before scrolling. `focusedMemberSection` is cleared immediately to prevent double-scroll on change re-fires.
 
+**MemberHeader** — gradient hero card at the top of each member detail:
+- `MeshGradient` 2×2 background colored by seniority tier (same palette as TeamMemberCard)
+- Dot grid overlay 6%
+- Avatar 80pt centered with white ring (3pt) + shadow
+- Name (title2, white) + role (footnote, white 60%) + seniority pill + stack count pill
+- Below gradient: Edit/Delete buttons + mentorship info on white background
+- Entire card clipped to `CRadius.md` with `cardShadow()`
+
 **Member sections (vertical stack):**
 1. `TagSection` — strengths + growth areas (chips, tap to edit, + to add)
 2. `MemberRadar` — behavioral radar chart
@@ -744,22 +779,54 @@ The 0.35s delay lets the view hierarchy settle before scrolling. `focusedMemberS
 ### 7.6 Insights
 
 **InsightsView:**
-- `TabView` with 5 tabs (Individual, Situational, Team, 1:1 Prep, Perf Review)
+- Segmented picker in toolbar: 5 insight types (Individual, Situational, Team, 1:1 Prep, Perf Review)
+- Each tab uses `CatalystInsightLayout` or `CatalystSimpleInsightLayout`
 - Streaming output bound to `@State var streamingText`
 - Completed insights auto-saved to database
 
+**AIOutputCard** (shared component in `DesignSystemCatalystInsightLayout.swift`):
+- `MeshGradient` 2×2: violet `#2D1B69` → dark indigo `#1e1b4b` → near-black `#0f0b2a`
+- Dot grid overlay 5%
+- Sparkles icon in glowing circle + "AI Insight" title (white)
+- `MarkdownText` with `.colorScheme(.dark)` — all system text/secondary colors adapt
+- `ProgressView` tinted `.white.opacity(0.55)` during streaming
+- Colored drop shadow (violet) for floating effect
+- Used in both live generation and `InsightDetailView` (history)
+
+**InsightHistoryView:**
+- Full browsable history: filter by type, member, or keyword search
+- `InsightHistoryRow`: left accent strip (3pt, type color) + type badge + member name + preview
+- Tapping a row opens `InsightDetailView` with `AIOutputCard` for the response
+- Swipe-to-delete with confirmation alert
+- Accessible from toolbar in InsightsView
+
 ### 7.7 Settings
 
-**SettingsView** — Form with 4 sections:
+**SettingsView** — two-column layout (no nested NavigationSplitView):
+```swift
+HStack(spacing: 0) {
+    SettingsSidebar(selectedSection: $selectedSection) // 220pt
+    Divider()
+    settingsContent
+}
+```
 
-1. **Your Profile** — name, role, team name, photo URL, preview, "Save Profile"
-2. **API Credentials** — SecureField (API key), TextField (base URL), "Test Connection", "Save Credentials"
-3. **Data Management:**
-   - **Reset to Demo Data** — destructive button (`.role(.destructive)`, icon `arrow.counterclockwise`)
-   - Confirmation alert: title "Reset to Demo Data?", message explains 10-member reset
-   - On confirm: deletes all `TeamMember` objects, calls `SampleDataProvider.populate(in:)`, shows success banner for 3 seconds
-   - Export / Import (placeholders)
-4. **About** — version, build number
+**SettingsSidebar** — same dark MeshGradient + dot grid as the app sidebar:
+- "Settings" title in white
+- Section items with colored SF Symbol squares (iOS Settings.app style)
+- Selected state: `white.opacity(0.10)` + border (same as `SidebarNavItem`)
+
+**Sections:**
+1. **Profile** — name, role, team name, photo (URL or PhotosPicker)
+2. **AI** — API key (SecureField), base URL, connection test
+3. **Organization** — Seniority Levels config (sheet), Tech Stack Tags (sheet)
+4. **Data** — Export JSON, Import JSON, Reset to Demo Data
+5. **Appearance** — System / Light / Dark theme picker
+6. **About** — version, build number
+
+**Export/Import (v1.1.0 format):**
+- Exports: members + strengths/weaknesses + stack + observations + IDPs + actions + promotion records + criteria + profile events
+- Import preserves `seniorityRaw` string to avoid losing custom preset codes
 
 ### 7.8 Search
 
@@ -845,13 +912,61 @@ Deletes all existing members first (cascade deletes their children), then popula
 
 ---
 
-## 9. iPad Polish
+## 9. Visual Design Language
 
-- **NavigationSplitView** (not NavigationStack) — sidebar + detail
+### 9.1 Dark Sidebar System
+
+All sidebar and hero elements use an **always-dark** treatment independent of the app's color scheme setting (intentional design language, like Raycast):
+
+| Element | Background | Text |
+|---|---|---|
+| App sidebar | MeshGradient dark purple + dot grid | white |
+| Settings sidebar | Same MeshGradient | white |
+| TeamOverview hero | MeshGradient indigo | white |
+| MemberHeader | MeshGradient (seniority color) | white |
+| AI output card | MeshGradient violet | white (.colorScheme(.dark)) |
+
+### 9.2 MeshGradient Pattern
+
+`MeshGradient` (iPadOS 26+) with dot grid overlay. Used consistently across all dark surfaces:
+
+```swift
+// Dot grid (Canvas-based, 22pt spacing, 0.85pt radius dots, 5–6% opacity)
+Canvas { ctx, size in
+    let spacing: CGFloat = 22
+    let radius: CGFloat = 0.85
+    // ... draw white circles at regular intervals
+}
+.opacity(0.06)
+```
+
+### 9.3 Seniority Color Palette
+
+Accent color derived from seniority tier, used in TeamMemberCard and MemberHeader gradient:
+
+| Tier | Color | Hex |
+|---|---|---|
+| T1 | Amber | `#D97706` |
+| T2 | Blue | `#3B82F6` |
+| T3 | Brand Indigo | `#5B5BD6` |
+| T4 | Emerald | `#10B981` |
+
+### 9.4 Color System (Dark Mode)
+
+`CColor` neutrals use `UIColor` semantic colors — fully adaptive:
+- `neutral0` = `Color(.systemBackground)` → white light / near-black dark
+- `neutral50` = `Color(.secondarySystemBackground)`
+- `neutral900` = `Color(.label)` → dark light / white dark
+
+Chart dot borders use `Color(.systemBackground)` (not `Color.white`) to remain visible in light mode.
+
+## 10. iPad Polish
+
+- **NavigationSplitView(.balanced)** — sidebar + detail
 - **SF Symbols** everywhere (no custom PNGs for icons)
 - **Animations** — `.animation(.smooth)`, `.contentTransition(.numericText())`
 - **Spring animations** — `.spring(response: 0.3, dampingFraction: 0.8)` for UI interactions
-- **Hover effects** — `.hoverEffect(.lift)` on cards
+- **Hover effects** — seniority-colored border on `TeamMemberCard` hover
 - **Multi-column grids** — `.adaptive(minimum: 280)` → reflows in portrait/landscape/Split View
 - **Keyboard shortcuts** — ⌘K (search)
 - **Empty states** — SF Symbol + text + CTA
@@ -915,13 +1030,11 @@ Every `@Model` property:
 ## 13. Known Limitations
 
 1. **No offline indicator** — app assumes internet for AI, doesn't show connection status
-2. **No insights history view** — insights are saved but not browsable in UI
-3. **No notifications** — IDP target dates, upcoming 1:1s (future)
-4. **No custom fields** — member profiles have fixed schema
-5. **No bulk operations** — no multi-select for batch edits
-6. **Single EM** — no multi-user mode
-7. **API key per device** — doesn't sync (security trade-off)
-8. **Export/Import** — placeholders in Settings (not yet implemented)
+2. **No notifications** — IDP target dates, upcoming 1:1s (future)
+3. **No custom fields** — member profiles have fixed schema
+4. **No bulk operations** — no multi-select for batch edits
+5. **Single EM** — no multi-user mode
+6. **API key per device** — doesn't sync (security trade-off)
 
 ---
 
@@ -947,7 +1060,7 @@ Every `@Model` property:
 
 ## 16. Deployment
 
-**Minimum target:** iPadOS 17.0 (SwiftData + @Observable require iOS 17+)
+**Minimum target:** iPadOS 26.0 (MeshGradient + Liquid Glass require iPadOS 26+)
 
 **Bundle ID:** `com.prontto.Catalyze`
 
@@ -969,10 +1082,8 @@ Every `@Model` property:
 
 ## 17. Future Roadmap
 
-- **Export/Import** — JSON + Markdown export
-- **Insights History** — browsable list of past AI insights
 - **Notifications** — local notifications for IDP deadlines, 1:1 reminders
-- **Photos integration** — PhotosPicker instead of URL for avatars
+- **Photos integration** — PhotosPicker instead of URL for avatars (partial: URL only today)
 - **Custom fields** — user-defined fields on member profiles
 - **Bulk actions** — multi-select members for batch edits
 - **More charts** — observations over time, IDP completion trends
